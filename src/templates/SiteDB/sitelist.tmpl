@@ -1,0 +1,58 @@
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="/controllers/css/fonts-min/container" />
+
+$page.yuiregistry
+
+<title>SiteDB :: SiteList</title>
+
+</head>
+<script>
+function loadsites(url) {
+	 // Get the element in which to report messages from the server
+	 alert("hello");
+	 var listroot = YAHOO.util.Dom.get('theplot');
+	 listroot.innerHTML = '';
+	 // Define the callbacks for the asyncRequest
+	 var callbacks = {
+	     success : function (o) {
+	         // Process the JSON data returned from the server
+	         var messages = [];
+	         try {
+	             messages = YAHOO.lang.JSON.parse(o.responseText);
+	         }
+	         catch (x) {
+	             alert("JSON Parse failed!");
+	             return;
+	         }
+	         // The returned data was parsed into an array of objects.
+	         alert(messages)
+	     },
+	     failure : function (o) {
+	         if (!YAHOO.util.Connect.isCallInProgress(o)) {
+	             alert("Async call failed!");
+	         }
+	     },
+	     timeout : 3000
+	 };
+	     
+	// Make the call to the server for JSON data
+	//YAHOO.util.Connect.initHeader('Accept', 'application/json')
+	YAHOO.util.Connect.asyncRequest('GET', url, callbacks);
+};
+</script>
+<body class="yui-skin-sam">
+
+<style>
+        #container {height:15em;}
+</style>
+
+$page.yuiroot
+
+<div>
+    <button id="showmodal">Show modal panel</button> 
+    <button id="hidemodal">Hide modal panel</button>
+</div>
+
+</html>
