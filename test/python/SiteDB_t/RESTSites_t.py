@@ -10,7 +10,7 @@ class RESTSites_t(unittest.TestCase):
 
     def setUp(self):
         self.goodurls = [('/sites/list/T2_UK_SGrid_Bristol/', {}),
-                ('/sites/contacts/T2_UK_SGrid_Bristol/', {'role':'Data Manager'}), 
+                ('/sites/contacts/T2_UK_SGrid_Bristol/', {'role':'Data Manager'}),
                 ('/sites/contacts/T2_UK_SGrid_Bristol/', {'role':['Data Manager',
                                                                   'Site Admin']}),
                 ('/sites/resource_pledge/T2_UK/2009.1', {}),
@@ -31,7 +31,7 @@ class RESTSites_t(unittest.TestCase):
         headers={"Accept": "application/json"}
         json = JSONRequests('localhost:8010')
         self.runReq(self.goodurls, json, 200)
-    
+
     def testGoodGetDefault(self):
         req = Requests('localhost:8010')
         self.runReq(self.goodurls, req, 200)
@@ -40,11 +40,11 @@ class RESTSites_t(unittest.TestCase):
         headers={"Accept": "application/json"}
         json = JSONRequests('localhost:8010')
         self.runReq(self.badurls, json, 400)
-    
+
     def testBaadGetDefault(self):
         req = Requests('localhost:8010')
         self.runReq(self.badurls, req, 400)
-        
+
     def runReq(self, urls, req, code):
         #TODO: check keys returned are good
         for u in urls:
@@ -57,14 +57,14 @@ class RESTSites_t(unittest.TestCase):
                                                                     result[0])
     def testPut(self):
         pass
-    
+
     def testPost(self):
         pass
-    
+
     def testDelete(self):
         pass
 
-    
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testSiteGet']
     unittest.main()
