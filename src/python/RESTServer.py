@@ -114,8 +114,6 @@ class MiniRESTApi:
     # Invoke the method.
     obj = apiobj['call'](*safe.args, **safe.kwargs)
 
-    # FIXME: arbitrary data, e.g. images, octet streams, etc?
-
     # Format the response.
     response.headers["Content-Type"] = format
     response.headers["Trailer"] = "ETag X-REST-Status"

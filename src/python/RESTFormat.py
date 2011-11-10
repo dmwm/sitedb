@@ -239,3 +239,59 @@ class JSONFormat:
       comma = ", "
     preamble += '%s"%s": [\n' % (comma, cherrypy.request.rest_generate_data)
     return self.stream_chunked(preamble, trailer, stream, etag)
+
+class RawFormat:
+  """Format an iterable of objects as raw data.
+
+  Generates raw data completely unmodified, for example image data or
+  streaming arbitrary external data files including even plain text.
+  Computes an ETag on the output in the process.  If the raw data is
+  a simple string, yields it as such without using chunking, otherwise
+  generates the input stream as chunked transfer encoding HTTP response.
+
+  After the output has been emitted, sets ETag response header to the
+  value computed and X-REST-Status to 100. Any exceptions raised by input
+  stream are reported to `report_rest_error` and swallowed, as this is
+  normally used to generate output for CherryPy responses, which cannot
+  handle exceptions reasonably after the output generation begins. The
+  client must inspect the X-REST-Status trailer header to find out if it
+  got the complete output. The ETag header is generated for output
+  produced, even if an exception is raised."""
+
+  @staticmethod
+  def stream_chunked(stream, etag):
+    """Generator for actually producing the output."""
+    etagval = None
+
+    # Make 'stream' iterable; we don't have unsafe strings here.
+    if isinstance(stream, types.FileType):
+      stream = cherrypy.lib.file_generator(stream, 1024*1024)
+
+    try:
+      for chunk in stream:
+        etagval = etag(etagval, chunk)
+        yield chunk
+
+      etagval = etag(etagval, None)
+      cherrypy.response.headers["X-REST-Status"] = 100
+    except RESTError, e:
+      report_rest_error(e, format_exc(), False)
+    except Exception, e:
+      report_rest_error(ExecutionError(), format_exc(), False)
+    finally:
+      cherrypy.response.headers["ETag"] = etagval
+
+  def __call__(self, stream, etag):
+    """Main entry point for generating output for `stream` using `etag`
+    object to generate ETag header. If `stream` is a scalar object or a
+    string, returns immediately with the headers set, otherwise returns
+    a generator function for producing a verbatim copy of `stream` item.
+    The intention is that the caller will use the iterable to generate
+    chunked HTTP transfer encoding, or a simple result such as an image."""
+    if isinstance(stream, basestring) or stream is None:
+      if stream is None: stream = ''
+      cherrypy.response.headers["ETag"] = etag(etag(None, stream), None)
+      cherrypy.response.headers["X-REST-Status"] = 100
+      return stream
+    else:
+      return self.stream_chunked(stream, etag)
