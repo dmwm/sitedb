@@ -452,17 +452,19 @@ class RESTEntity:
     self.config = config
 
 def restcall(func=None, args=None, generate="result", **kwargs):
-  if not func:
-    raise ValueError("'restcall' must be applied to a function")
-  if args == None:
-    args = [a for a in inspect.getargspec(func).args if a != 'self']
-  if args == None or not isinstance(args, list):
-    raise ValueError("'args' must be defined")
-  kwargs.update(generate = generate)
-  setattr(func, 'rest.exposed', True)
-  setattr(func, 'rest.args', args or [])
-  setattr(func, 'rest.params', kwargs)
-  return func
+  def apply_restcall_opts(func, args=args, generate=generate, kwargs=kwargs):
+    if not func:
+      raise ValueError("'restcall' must be applied to a function")
+    if args == None:
+      args = [a for a in inspect.getargspec(func).args if a != 'self']
+    if args == None or not isinstance(args, list):
+      raise ValueError("'args' must be defined")
+    kwargs.update(generate = generate)
+    setattr(func, 'rest.exposed', True)
+    setattr(func, 'rest.args', args or [])
+    setattr(func, 'rest.params', kwargs)
+    return func
+  return (func and apply_restcall_opts(func)) or apply_restcall_opts
 
 def rows(cursor):
   for row in cursor:
