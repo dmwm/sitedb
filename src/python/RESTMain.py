@@ -121,6 +121,7 @@ class RESTMain:
     self.srvconfig = config.section_("main")
     self.statedir = statedir
     self.hostname = socket.getfqdn().lower()
+    self.silent = False
     self.extensions = {}
     self.views = {}
 
@@ -171,6 +172,7 @@ class RESTMain:
     cpconfig.update({'request.methods_with_bodies': ("POST", "PUT", "DELETE")})
     thread.stack_size(getattr(self.srvconfig, 'thread_stack_size', 128*1024))
     sys.setcheckinterval(getattr(self.srvconfig, 'sys_check_interval', 10000))
+    self.silent = getattr(self.srvconfig, 'silent', False)
 
     # Apply any override options from app config file.
     for section in ('engine', 'hooks', 'log', 'request', 'response',
@@ -206,7 +208,8 @@ class RESTMain:
     if getattr(self.config, 'extensions', None):
       for ext in self.config.extensions:
         name = ext._internal_name
-        cherrypy.log("INFO: instantiating extension %s" % name)
+	if not self.silent:
+          cherrypy.log("INFO: instantiating extension %s" % name)
 	module_name, class_name = ext.object.rsplit(".", 1)
 	module = __import__(module_name, globals(), locals(), [class_name])
 	obj = getattr(module, class_name)(self, ext)
@@ -219,7 +222,8 @@ class RESTMain:
     for view in self.config.views:
       name = view._internal_name
       path = "/%s" % self.appname + ((name != index and "/%s" % name) or "")
-      cherrypy.log("INFO: loading %s into %s" % (name, path))
+      if not self.silent:
+        cherrypy.log("INFO: loading %s into %s" % (name, path))
       module_name, class_name = view.object.rsplit(".", 1)
       module = __import__(module_name, globals(), locals(), [class_name])
       obj = getattr(module, class_name)(self, view)
