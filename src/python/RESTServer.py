@@ -61,21 +61,6 @@ class MiniRESTApi:
 
   ####################################################################
   def _call(self, param):
-    # Check what format the caller requested. At least one is required; HTTP
-    # spec says no "Accept" header means accept anything, but that is too
-    # error prone for a REST data interface as that establishes a default we
-    # cannot then change later. So require the client identifies a format.
-    # Browsers will accept at least */*; so can clients who don't care.
-    # Note that accept() will raise HTTPError(406) if no match is found.
-    try:
-      if not request.headers.elements('Accept'):
-        raise NotAcceptable('Accept header required')
-      format = accept([x[0] for x in self.formats])
-      fmthandler = [x[1] for x in self.formats if x[0] == format][0]
-    except HTTPError, e:
-      formats = ', '.join(f[0] for f in self.formats)
-      raise NotAcceptable('Available types: %s' % formats)
-
     # Make sure the request method is something we actually support.
     if request.method not in self.methods:
       response.headers['Allow'] = " ".join(sorted(self.methods.keys()))
@@ -104,6 +89,23 @@ class MiniRESTApi:
         " ".join(sorted([m for m, d in self.methods.iteritems() if api in d]))
       raise APIMethodMismatch()
     apiobj = self.methods[request.method][api]
+
+    # Check what format the caller requested. At least one is required; HTTP
+    # spec says no "Accept" header means accept anything, but that is too
+    # error prone for a REST data interface as that establishes a default we
+    # cannot then change later. So require the client identifies a format.
+    # Browsers will accept at least */*; so can clients who don't care.
+    # Note that accept() will raise HTTPError(406) if no match is found.
+    # Available formats are either specified by REST method, or self.formats.
+    try:
+      if not request.headers.elements('Accept'):
+        raise NotAcceptable('Accept header required')
+      formats = apiobj.get('formats', self.formats)
+      format = accept([f[0] for f in formats])
+      fmthandler = [f[1] for f in formats if f[0] == format][0]
+    except HTTPError, e:
+      format_names = ', '.join(f[0] for f in formats)
+      raise NotAcceptable('Available types: %s' % format_names)
 
     # Validate arguments. May convert arguments too, e.g. str->int.
     safe = RESTArgs([], {})
