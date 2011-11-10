@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import sys, os, cherrypy
+from cherrypy.test import webtest
+from SiteDB.Admin import AdminClient, init_server_auth, setup_server
+
+def run_client(action):
+  try:
+    c = AdminClient()
+    if action == 'show-schema':
+      c.get_schema()
+    elif action == 'save-schema':
+      c.modify_schema('save')
+    elif action == 'restore-schema':
+      c.modify_schema('restore')
+    elif action == 'delete-all':
+      c.remove_schema('all')
+    elif action == 'delete-current':
+      c.remove_schema('current')
+    elif action == 'delete-archive':
+      c.remove_schema('archive')
+    elif action == 'load-schema':
+      c.load_schema()
+  finally:
+    cherrypy.engine.exit()
+
+user = "cms_lat"
+service = "devdb10"
+action = "show-schema"
+
+init_server_auth(user, service)
+setup_server()
+
+webtest.WebCase.PORT = cherrypy.server.socket_port
+cherrypy.engine.start_with_callback(run_client, args=(action,))
+cherrypy.engine.block()

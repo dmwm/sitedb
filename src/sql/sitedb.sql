@@ -60,7 +60,7 @@ create table resource_pledge (
 );
 create sequence resource_pledge_sq increment by 1 start with 1;
 
-/* Site's official resource pledge */
+-- Site's official resource pledge
 create table resource_delivered (
   deliveryid            number(10) not null,
   site			number(10) not null,
@@ -81,7 +81,7 @@ create table resource_delivered (
 );
 create sequence resource_delivered_sq increment by 1 start with 1;
 
-/* Site's resource element (disks, storage)*/
+-- Site's resource element (disks, storage)
 create table resource_element (
   id			number(10) not null,
   site			number(10) not null,
@@ -96,7 +96,7 @@ create table resource_element (
 create sequence resource_element_sq increment by 1 start with 1;
 create index ix_resource_element_site on resource_element (site);
 
-/* Table for tracking pinned software releases */
+-- Table for tracking pinned software releases
 create table pinned_releases (
   ce_id			number(10) not null,
   release		varchar(100),
@@ -107,7 +107,7 @@ create table pinned_releases (
     on delete cascade
 );
 
-/* Site's phedex nodes */
+-- Site's phedex nodes
 create table phedex_node (
   id			number(10) not null,
   site			number(10) not null,
@@ -126,11 +126,11 @@ create index ix_phedex_node_name on phedex_node (name);
 
 
 
-/**
- *   Site performance tables
- **/
+----
+--   Site performance tables
+----
 
-/* High-level statistics about a site's performance */
+-- High-level statistics about a site's performance
 create table performance (
   site			number(10) not null,
   time			timestamp not null,
@@ -151,7 +151,7 @@ create table performance (
 
 
 
-/* High-level statistics about a sites job activity */
+-- High-level statistics about a sites job activity
 create table job_activity (
   site			number(10) not null,
   time			timestamp not null,
@@ -166,11 +166,11 @@ create table job_activity (
 
 
 
-/**
- *  Security Module tables
- **/
+----
+--  Security Module tables
+----
 
-/* List of cryptographic keys for the security module */
+-- List of cryptographic keys for the security module
 create table crypt_key (
   id			number(10) not null,
   cryptkey		varchar(80) not null,
@@ -184,7 +184,7 @@ create index ix_crypt_key_time on crypt_key (time);
 
 
 
-/* List of usernames and passwords for the secuirty module */
+-- List of usernames and passwords for the secuirty module
 CREATE TABLE user_passwd (
   username		varchar(60) not null,
   passwd		varchar(30) not null,
@@ -195,11 +195,11 @@ create index ix_user_passwd_passwd on user_passwd (passwd);
 
 
 
-/**
- *  "Person" definition tables
- **/
+----
+--  "Person" definition tables
+----
 
-/* A human being */
+-- A human being
 create table contact (
   id			number(10) not null,
   surname		varchar(1000) not null,
@@ -225,7 +225,7 @@ create index ix_contact_forename on contact (forename);
 
 
 
-/* Management roles e.g. 'PhedexSiteAdmin', 'PhedexDataManager' */
+-- Management roles e.g. 'PhedexSiteAdmin', 'PhedexDataManager'
 create table role (
   id			number(10) not null,
   title			varchar(100) not null,
@@ -237,8 +237,7 @@ create sequence role_sq increment by 1 start with 1;
 
 
 
-/* An abstract group humans can belong to
-   e.g. 'higgs','top','BSM','global' etc. */
+-- An abstract group humans can belong to e.g. 'higgs','top','BSM','global' etc.
 create table user_group (
   id			number(10) not null,
   name			varchar(100) not null,
@@ -250,8 +249,8 @@ create sequence user_group_sq increment by 1 start with 1;
 
 
 
-/* A mapping of humans to responsibilites associated with a site
-   e.g. "Bob is the PhedexSiteAdmin of T4_Antartica" */
+-- A mapping of humans to responsibilites associated with a site
+-- e.g. "Bob is the PhedexSiteAdmin of T4_Antartica"
 create table site_responsibility (
   contact		number(10) not null,
   role			number(10) not null,
@@ -273,8 +272,8 @@ create index ix_site_resp_site on site_responsibility (site);
 
 
 
-/* A mapping of humans to responsibilities associated with a group
-   e.g. "Joe is the ProdRequestManager of the Gravitino group */
+-- A mapping of humans to responsibilities associated with a group
+-- e.g. "Joe is the ProdRequestManager of the Gravitino group
 create table group_responsibility (
   contact		number(10) not null,
   role			number(10) not null,
@@ -296,11 +295,11 @@ create index ix_group_resp_user_group on group_responsibility (user_group);
 
 
 
-/**
- *  Generic survey tables
- **/
+----
+--  Generic survey tables
+----
 
-/* Defines a survey and associates it with its creator */
+-- Defines a survey and associates it with its creator
 create table survey (
   id			number(10) not null,
   name			varchar(100) not null,
@@ -335,7 +334,7 @@ create index ix_survey_who_tier on survey_who (tier);
 create index ix_survey_who_role on survey_who (role);
 
 
-/* For sending out surveys by tier */
+-- For sending out surveys by tier
 create table survey_tiers (
   survey		number(10) not null,
   tier			number(10) not null,
@@ -352,7 +351,7 @@ create index ix_survey_tiers_tier on survey_tiers (tier);
 
 
 
-/* For sending out surveys by role */
+-- For sending out surveys by role
 create table survey_roles (
   survey		number(10) not null,
   role			number(10) not null,
@@ -369,7 +368,7 @@ create index ix_survey_roles_role on survey_roles (role);
 
 
 
-/* A question on a survey */
+-- A question on a survey
 create table question (
   id			number(10) not null,
   survey		number(10) not null,
@@ -386,7 +385,7 @@ create index ix_question_survey on question (survey);
 
 
 
-/* A default answer on a survey (for checkbox or drop-down menu style questions) */
+-- A default answer on a survey (for checkbox or drop-down menu style questions)
 create table question_default (
   question		number(10) not null,
   pos			number(10) not null,
@@ -400,7 +399,7 @@ create table question_default (
 
 
 
-/* A site's answer to the survey question */
+-- A site's answer to the survey question
 create table question_answer (
   site			number(10) not null,
   question		number(10) not null,
@@ -416,9 +415,10 @@ create table question_answer (
 );
 create index ix_question_answer_question on question_answer (question);
 
-/**
- * Tables to support naming convention
- **/
+----
+-- Tables to support naming convention
+----
+
 create table cms_name(
   id			number(10) not null,
   name			varchar(100) not null,
@@ -480,3 +480,5 @@ create table sam_cms_name_map(
     on delete cascade
 );
 
+-- begin execute immediate 'create role sitedb_website'; exception when others then if sqlcode = -01921 then null; else raise; end if; end;
+create role sitedb_website identified by @PASSWORD@;

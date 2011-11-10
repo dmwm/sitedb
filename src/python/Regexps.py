@@ -21,6 +21,9 @@ RX_TIER      = re.compile(r"^Tier \d+$")
 #: Regular expression for user/login names.
 RX_USER      = re.compile(r"^[a-z0-9_]+$")
 
+#: Regular expression for passwords.
+RX_PASSWD    = re.compile(r"^([*]|(RemovedUser--)?[A-Za-z0-9._/]{13,})$")
+
 #: Regular expression for human names.
 RX_NAME      = re.compile(r"^((?iu)[-\w ]*)$")
 

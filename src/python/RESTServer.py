@@ -414,7 +414,7 @@ class DatabaseRESTApi(MiniRESTApi):
     elif isinstance(errobj, dbtype.OperationalError):
       raise DatabaseUnavailable(errobj = errobj, trace = trace, lastsql = sql)
     elif isinstance(errobj, dbtype.InterfaceError):
-      raise DatabaseConnectionFailure(errobj = errobj, trace = trace, lastsql = sql)
+      raise DatabaseConnectionError(errobj = errobj, trace = trace, lastsql = sql)
     elif isinstance(errobj, RESTError):
       raise
     else:
