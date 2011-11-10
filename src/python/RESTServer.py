@@ -116,14 +116,15 @@ def _xml_stream_chunker(preamble, trailer, stream, etag):
     etagval = etag(etagval, preamble)
     yield preamble
 
-    for obj in stream:
-      chunk = _xml_obj_format(obj)
-      etagval = etag(etagval, chunk)
-      yield chunk
-
-    if trailer:
-      etagval = etag(etagval, trailer)
-      yield trailer
+    try:
+      for obj in stream:
+        chunk = _xml_obj_format(obj)
+        etagval = etag(etagval, chunk)
+        yield chunk
+    finally:
+      if trailer:
+        etagval = etag(etagval, trailer)
+        yield trailer
 
     etagval = etag(etagval, None)
     response.headers["X-REST-Status"] = 100
@@ -144,15 +145,16 @@ def _json_stream_chunker(preamble, trailer, stream, etag):
       etagval = etag(etagval, preamble)
       yield preamble
 
-    for obj in stream:
-      chunk = comma + cjson.encode(obj) + "\n"
-      etagval = etag(etagval, chunk)
-      yield chunk
-      comma = ","
-
-    if trailer:
-      etagval = etag(etagval, trailer)
-      yield trailer
+    try:
+      for obj in stream:
+        chunk = comma + cjson.encode(obj) + "\n"
+        etagval = etag(etagval, chunk)
+        yield chunk
+        comma = ","
+    finally:
+      if trailer:
+        etagval = etag(etagval, trailer)
+        yield trailer
 
     etagval = etag(etagval, None)
     response.headers["X-REST-Status"] = 100
