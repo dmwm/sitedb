@@ -1,4 +1,4 @@
-import re, cherrypy, traceback, random, xml, cjson, inspect, time, hashlib, imp
+import re, signal, cherrypy, traceback, random, xml, cjson, inspect, time, hashlib, imp
 from cherrypy import expose, request, response, HTTPError
 from cherrypy.lib.cptools import accept
 from rfc822 import formatdate as HTTPDate
@@ -341,6 +341,7 @@ class DatabaseRESTApi(MiniRESTApi):
     self._db = factory(*args)
     self._myid = "%s.%s" % (self.__class__.__module__, self.__class__.__name__)
     self.default_expire = 3600
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
   def _wrap(self, handler):
     @wraps(handler)
@@ -447,6 +448,12 @@ class DatabaseRESTApi(MiniRESTApi):
     assert getattr(request, 'db', None), "Expected instance from _precall"
     assert getattr(request, 'dbinst', None), "Expected instance from _precall"
 
+    # Set up 5-second timer and commit suicide once it expires. This is
+    # needed because sometimes database connection stuff simply hangs in
+    # unrecoverable ways. As ugly as it is, the cleanest solution is to
+    # let the entire process die and have the watchdog parent restart it.
+    signal.alarm(5)
+
     # Get a pool connection to the instance.
     db = request.db
     instance = request.dbinst
@@ -496,11 +503,13 @@ class DatabaseRESTApi(MiniRESTApi):
         request.dbconn = dbconn
         request.rest_generate_data = apiobj.get("generate", None)
         request.hooks.attach('on_end_request', self._dbexit, failsafe = True)
+	signal.alarm(0)
         return
       except Exception, e:
         lasterr = (e, format_exc())
         time.sleep(0.1)
 
+    signal.alarm(0)
     if dbtrace: cherrypy.log("TRACE SQL connection failed: %s" % lasterr)
     self._dberror(db['pool'], dbtype, dbconn, lasterr[0], lasterr[1], True)
 
