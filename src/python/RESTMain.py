@@ -73,6 +73,10 @@ class Logger(LogManager):
     outheaders = response.headers
     wfile = request.wsgi_environ.get('cherrypy.wfile', None)
     nout = (wfile and wfile.bytes_written) or outheaders.get('Content-Length', 0)
+    if hasattr(request, 'start_time'):
+      delta_time = (time.time() - request.start_time)*1e6
+    else:
+      delta_time = 0
     self.access_log.log \
       (logging.INFO,
        ('%(t)s %(H)s %(h)s "%(r)s" %(s)s'
@@ -86,7 +90,7 @@ class Logger(LogManager):
          's': response.status.split(" ", 1)[0],
          'i': request.rfile.rfile.bytes_read or "-",
          'b': nout or "-",
-         'T': (time.time() - request.start_time)*1e6,
+         'T': delta_time,
          'AS': inheaders.get("CMS-Auth-Status", "-"),
          'AU': inheaders.get("CMS-Auth-Cert", inheaders.get("CMS-Auth-Host", "")),
          'AC': getattr(request.cookie.get("cms-auth", None), "value", ""),
