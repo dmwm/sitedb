@@ -71,10 +71,12 @@ class Logger(LogManager):
     response = cherrypy.response
     inheaders = request.headers
     outheaders = response.headers
+    wfile = request.wsgi_environ.get('cherrypy.wfile', None)
+    nout = (wfile and wfile.bytes_written) or outheaders.get('Content-Length', 0)
     self.access_log.log \
       (logging.INFO,
        ('%(t)s %(H)s %(h)s "%(r)s" %(s)s'
-        ' [data: - in %(b)s out %(T).0f us ]'
+        ' [data: %(i)s in %(b)s out %(T).0f us ]'
         ' [auth: %(AS)s "%(AU)s" "%(AC)s" ]'
         ' [ref: "%(f)s" "%(a)s" ]') %
        { 't': self.time(),
@@ -82,7 +84,8 @@ class Logger(LogManager):
          'h': remote.name or remote.ip,
          'r': request.request_line,
          's': response.status.split(" ", 1)[0],
-         'b': outheaders.get('Content-Length', '') or "-",
+         'i': request.rfile.rfile.bytes_read or "-",
+         'b': nout or "-",
          'T': (time.time() - request.start_time)*1e6,
          'AS': inheaders.get("CMS-Auth-Status", "-"),
          'AU': inheaders.get("CMS-Auth-Cert", inheaders.get("CMS-Auth-Host", "")),
