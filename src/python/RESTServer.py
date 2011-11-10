@@ -172,6 +172,7 @@ class MiniRESTApi:
     self.formats = [ ('application/json', self._json),
                      ('application/xml', self._xml) ]
     self.methods = {}
+    self.default_expire = 3600
 
   ####################################################################
   def _addAPI(self, method, api, callable, args, validation, **kwargs):
@@ -316,6 +317,33 @@ class MiniRESTApi:
 
 ######################################################################
 ######################################################################
+class RESTApi(MiniRESTApi):
+  def _addEntities(self, entities, entry, wrapper = None):
+    for label, entity in entities.iteritems():
+      for method in _METHODS:
+        handler = getattr(entity, method.lower(), None)
+        if not handler and method == 'HEAD':
+          handler = getattr(entity, 'get', None)
+        if handler and getattr(handler, 'rest.exposed', False):
+          rest_args = getattr(handler, 'rest.args')
+          rest_params = getattr(handler, 'rest.params')
+	  if wrapper: handler = wrapper(handler)
+          self._addAPI(method, label, handler, rest_args,
+                       [entity.validate, entry],
+		       entity = entity, **rest_params)
+
+  def _add(self, entities):
+    self._addEntities(entities, self._enter)
+
+  def _enter(self, apiobj, method, api, param, safe):
+    request.rest_generate_data = apiobj.get("generate", None)
+    request.rest_generate_preamble = {}
+    cols = apiobj.get("columns", None)
+    if cols:
+      request.rest_generate_preamble["columns"] = cols
+
+######################################################################
+######################################################################
 # - get connection from pool; verify it's ok before using it
 # - set c.client_identifier, c.clientinfo, c.module, c.action
 #    - program -> sitedb web server @ host
@@ -331,7 +359,7 @@ class MiniRESTApi:
 # - verify autocommit is off
 # - use c.current_schema / alter session set current_schema = foo
 
-class DatabaseRESTApi(MiniRESTApi):
+class DatabaseRESTApi(RESTApi):
   def __init__(self, app, config):
     class DBFactory: pass
     MiniRESTApi.__init__(self, app, config)
@@ -340,8 +368,10 @@ class DatabaseRESTApi(MiniRESTApi):
     exec ("from %s import %s\nf.__call__ = %s\n" % (mod, fun, fun)) in {}, {"f": factory}
     self._db = factory(*args)
     self._myid = "%s.%s" % (self.__class__.__module__, self.__class__.__name__)
-    self.default_expire = 3600
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+  def _add(self, entities):
+    self._addEntities(entities, self._dbenter, self._wrap)
 
   def _wrap(self, handler):
     @wraps(handler)
@@ -352,19 +382,6 @@ class DatabaseRESTApi(MiniRESTApi):
         self._dberror(request.dbpool, request.dbtype, request.dbconn,
                       e, format_exc(), False)
     return dbapi_wrapper
-
-  def _add(self, entities):
-    for label, entity in entities.iteritems():
-      for method in _METHODS:
-        handler = getattr(entity, method.lower(), None)
-        if not handler and method == 'HEAD':
-          handler = getattr(entity, 'get', None)
-        if handler and getattr(handler, 'rest.exposed', False):
-          rest_args = getattr(handler, 'rest.args')
-          rest_params = getattr(handler, 'rest.params')
-          self._addAPI(method, label, self._wrap(handler), rest_args,
-                       [entity.validate, self._dbenter],
-                       entity = entity, **rest_params)
 
   def _dberror(self, dbpool, dbtype, dbconn, errobj, trace, inconnect):
     # If this was a connection failure and we have a connection object,
