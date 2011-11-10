@@ -97,10 +97,147 @@ class Logger(LogManager):
          'f': inheaders.get("Referer", ""),
          'a': inheaders.get("User-Agent", "") })
 
-class ServerDaemon:
+class RESTMain:
+  """Base class for the core cherrypy main application object.
+
+  The `RESTMain` implements basic functionality of a cherrypy-based server.
+  Most users will want the fully functional `RESTDaemon` instead; but in
+  some cases such as tests and other single-shot jobs which don't require a
+  daemon process this class is useful in its own right.
+
+  The class implements the methods required to configure, but not run, a
+  cherrypy server set up with an application configuration.
+
+  The main application object takes the server configuration and state
+  directory as parametres. It provides methods to create full cherrypy
+  serer and configure the application based on configuration description."""
+  def __init__(self, config, statedir):
+    """Prepare the server.
+
+    @param config -- server configuration
+    @param statedir -- server state directory."""
+    self.config = config
+    self.appname = config.main.application.lower()
+    self.appconfig = config.section_(self.appname)
+    self.srvconfig = config.section_("main")
+    self.statedir = statedir
+    self.hostname = socket.getfqdn().lower()
+    self.extensions = {}
+    self.views = {}
+
+  def validate_config(self):
+    """Check the server configuration has the required sections."""
+    for key in ('admin', 'description', 'title'):
+      if not hasattr(self.appconfig, key):
+        raise RuntimeError("'%s' required in application configuration" % key)
+
+  def setup_server(self):
+    """Configure CherryPy server from application configuration.
+
+    Traverses the server configuration portion and applies parameters
+    known to be for CherryPy to the CherryPy server configuration.
+    These are: engine, hooks, log, request, respose, server, tools,
+    wsgi, checker.
+
+    Also applies pseudo-parameters 'thread_stack_size' (default: 128kB)
+    and 'sys_check_interval' (default: 10000). The former sets the
+    default stack size to desired value, to avoid excessively large
+    thread stacks -- typical operating system default is 8 MB, which
+    adds up rather a lot for lots of server threads. The latter sets
+    python's `sys.setcheckinterval`; the default is to increase this
+    to avoid unnecessarily frequent checks for python's GIL, global
+    interpreter lock. In general we want each thread to complete as
+    quickly as possible without making unnecessary checks."""
+    cpconfig = cherrypy.config
+
+    # Determine server local base.
+    port = getattr(self.srvconfig, 'port', 8080)
+    local_base = getattr(self.srvconfig, 'local_base', socket.gethostname())
+    if local_base.find(':') == -1:
+      local_base = '%s:%d' % (local_base, port)
+
+    # Set default server configuration.
+    cherrypy.log = Logger()
+    cpconfig.update({'server.max_request_body_size': 0})
+    cpconfig.update({'server.environment': 'production'})
+    cpconfig.update({'server.socket_host': '0.0.0.0'})
+    cpconfig.update({'server.socket_port': port})
+    cpconfig.update({'server.socket_queue_size': 100})
+    cpconfig.update({'server.thread_pool': 100})
+    cpconfig.update({'tools.proxy.on': True})
+    cpconfig.update({'tools.proxy.base': local_base})
+    cpconfig.update({'tools.time.on': True})
+    cpconfig.update({'engine.autoreload_on': False})
+    cpconfig.update({'request.show_tracebacks': False})
+    cpconfig.update({'request.methods_with_bodies': ("POST", "PUT", "DELETE")})
+    thread.stack_size(getattr(self.srvconfig, 'thread_stack_size', 128*1024))
+    sys.setcheckinterval(getattr(self.srvconfig, 'sys_check_interval', 10000))
+
+    # Apply any override options from app config file.
+    for section in ('engine', 'hooks', 'log', 'request', 'response',
+                    'server', 'tools', 'wsgi', 'checker'):
+      if not hasattr(self.srvconfig, section):
+        continue
+      for opt, value in getattr(self.srvconfig, section).dictionary_().iteritems():
+        if isinstance(value, ConfigSection):
+          for xopt, xvalue in value.dictionary_().iteritems():
+            cpconfig.update({"%s.%s.%s" % (section, opt, xopt): xvalue})
+        elif isinstance(value, str) or isinstance(value, int):
+          cpconfig.update({"%s.%s" % (section, opt): value})
+        else:
+          raise RuntimeError("%s.%s should be string or int, got %s"
+                             % (section, opt, type(value)))
+
+    # Apply security customisation.
+    if hasattr(self.srvconfig, 'authz_defaults'):
+      defsec = self.srvconfig.authz_defaults
+      cpconfig.update({'tools.cms_auth.on': True})
+      cpconfig.update({'tools.cms_auth.role': defsec['role']})
+      cpconfig.update({'tools.cms_auth.group': defsec['group']})
+      cpconfig.update({'tools.cms_auth.site': defsec['site']})
+
+    if hasattr(self.srvconfig, 'authz_policy'):
+      cpconfig.update({'tools.cms_auth.policy': self.srvconfig.authz_policy})
+
+  def install_application(self):
+    """Install application and its components from the configuration."""
+    factory = WMFactory("wmc-httpd")
+    index = self.srvconfig.index
+
+    # First instantiate non-view extensions.
+    if getattr(self.config, 'extensions', None):
+      for ext in self.config.extensions:
+        name = ext._internal_name
+        cherrypy.log("INFO: instantiating extension %s" % name)
+        obj = factory.loadObject(ext.object, [self, ext],
+                                 listFlag = True,
+                                 getFromCache = False)
+        self.extensions[name] = obj
+
+    # Then instantiate views and mount them to cherrypy. If the view is
+    # designated as the index, create it as an application, profiled one
+    # if server profiling was requested. Otherwise just mount it as a
+    # normal server content object. Force tracebacks off for everything.
+    for view in self.config.views:
+      name = view._internal_name
+      path = "/%s" % self.appname + ((name != index and "/%s" % name) or "")
+      cherrypy.log("INFO: loading %s into %s" % (name, path))
+      obj = factory.loadObject(view.object, [self, view],
+                               listFlag = True,
+                               getFromCache = False)
+      app = Application(obj, path, {"/": {"request.show_tracebacks": False}})
+      if getattr(self.srvconfig, 'profile', False):
+        profdir = "%s/profile" % self.statedir
+        if not os.path.exists(profdir):
+          os.makedirs(profdir)
+        app = ProfiledApp(app, profdir)
+      cherrypy.tree.mount(app)
+      self.views[name] = obj
+
+class RESTDaemon(RESTMain):
   """Web server object.
 
-  The `ServerDaemon` represents the web server daemon. It provides all
+  The `RESTDaemon` represents the web server daemon. It provides all
   services for starting, stopping and checking the status of the daemon,
   as well as running the main loop.
 
@@ -117,16 +254,9 @@ class ServerDaemon:
 
     @param config -- server configuration
     @param statedir -- server state directory."""
-    self.config = config
-    self.appname = config.main.application.lower()
-    self.appconfig = config.section_(self.appname)
-    self.srvconfig = config.section_("main")
-    self.statedir = statedir
+    RESTMain.__init__(self, config, statedir)
     self.pidfile = "%s/pid" % self.statedir
     self.logfile = ["rotatelogs", "%s/%s-%%Y%%m%%d.log" % (self.statedir, self.appname), "86400"]
-    self.hostname = socket.getfqdn().lower()
-    self.extensions = []
-    self.views = []
 
   def daemon_pid(self):
     """Check if there is a daemon running, and if so return its pid.
@@ -291,9 +421,9 @@ class ServerDaemon:
     # Run. Override signal handlers after CherryPy has itself started and
     # installed its own handlers. To achieve this we need to start the
     # server in non-blocking mode, fiddle with, than ask server to block.
-    self._validate()
-    self._setup()
-    self._installapp()
+    self.validate_config()
+    self.setup_server()
+    self.install_application()
     cherrypy.log("INFO: starting server in %s" % self.statedir)
     cherrypy.engine.start()
     signal(SIGHUP, sig_reload)
@@ -302,115 +432,6 @@ class ServerDaemon:
     signal(SIGQUIT, sig_terminate)
     signal(SIGINT, sig_terminate)
     cherrypy.engine.block()
-
-  def _validate(self):
-    """Check the server configuration has the required sections."""
-    for key in ('admin', 'description', 'title'):
-      if not hasattr(self.appconfig, key):
-        raise RuntimeError("'%s' required in application configuration" % key)
-
-  def _setup(self):
-    """Configure CherryPy server from application configuration.
-
-    Traverses the server configuration portion and applies parameters
-    known to be for CherryPy to the CherryPy server configuration.
-    These are: engine, hooks, log, request, respose, server, tools,
-    wsgi, checker.
-
-    Also applies pseudo-parameters 'thread_stack_size' (default: 128kB)
-    and 'sys_check_interval' (default: 10000). The former sets the
-    default stack size to desired value, to avoid excessively large
-    thread stacks -- typical operating system default is 8 MB, which
-    adds up rather a lot for lots of server threads. The latter sets
-    python's `sys.setcheckinterval`; the default is to increase this
-    to avoid unnecessarily frequent checks for python's GIL, global
-    interpreter lock. In general we want each thread to complete as
-    quickly as possible without making unnecessary checks."""
-    cpconfig = cherrypy.config
-
-    # Determine server local base.
-    port = getattr(self.srvconfig, 'port', 8080)
-    local_base = getattr(self.srvconfig, 'local_base', socket.gethostname())
-    if local_base.find(':') == -1:
-      local_base = '%s:%d' % (local_base, port)
-
-    # Set default server configuration.
-    cherrypy.log = Logger()
-    cpconfig.update({'server.max_request_body_size': 0})
-    cpconfig.update({'server.environment': 'production'})
-    cpconfig.update({'server.socket_host': '0.0.0.0'})
-    cpconfig.update({'server.socket_port': port})
-    cpconfig.update({'server.socket_queue_size': 100})
-    cpconfig.update({'server.thread_pool': 100})
-    cpconfig.update({'tools.proxy.on': True})
-    cpconfig.update({'tools.proxy.base': local_base})
-    cpconfig.update({'tools.time.on': True})
-    cpconfig.update({'engine.autoreload_on': False})
-    cpconfig.update({'request.show_tracebacks': False})
-    cpconfig.update({'request.methods_with_bodies': ("POST", "PUT", "DELETE")})
-    thread.stack_size(getattr(self.srvconfig, 'thread_stack_size', 128*1024))
-    sys.setcheckinterval(getattr(self.srvconfig, 'sys_check_interval', 10000))
-
-    # Apply any override options from app config file.
-    for section in ('engine', 'hooks', 'log', 'request', 'response',
-                    'server', 'tools', 'wsgi', 'checker'):
-      if not hasattr(self.srvconfig, section):
-        continue
-      for opt, value in getattr(self.srvconfig, section).dictionary_().iteritems():
-        if isinstance(value, ConfigSection):
-          for xopt, xvalue in value.dictionary_().iteritems():
-            cpconfig.update({"%s.%s.%s" % (section, opt, xopt): xvalue})
-        elif isinstance(value, str) or isinstance(value, int):
-          cpconfig.update({"%s.%s" % (section, opt): value})
-        else:
-          raise RuntimeError("%s.%s should be string or int, got %s"
-                             % (section, opt, type(value)))
-
-    # Apply security customisation.
-    if hasattr(self.srvconfig, 'authz_defaults'):
-      defsec = self.srvconfig.authz_defaults
-      cpconfig.update({'tools.cms_auth.on': True})
-      cpconfig.update({'tools.cms_auth.role': defsec['role']})
-      cpconfig.update({'tools.cms_auth.group': defsec['group']})
-      cpconfig.update({'tools.cms_auth.site': defsec['site']})
-
-    if hasattr(self.srvconfig, 'authz_policy'):
-      cpconfig.update({'tools.cms_auth.policy': self.srvconfig.authz_policy})
-
-  def _installapp(self):
-    """Install application and its components from the configuration."""
-    factory = WMFactory("wmc-httpd")
-    index = self.srvconfig.index
-
-    # First instantiate non-view extensions.
-    if getattr(self.config, 'extensions', None):
-      for ext in self.config.extensions:
-        name = ext._internal_name
-        cherrypy.log("INFO: instantiating extension %s" % name)
-        obj = factory.loadObject(ext.object, [self, ext],
-                                 listFlag = True,
-                                 getFromCache = False)
-        self.extensions.append(obj)
-
-    # Then instantiate views and mount them to cherrypy. If the view is
-    # designated as the index, create it as an application, profiled one
-    # if server profiling was requested. Otherwise just mount it as a
-    # normal server content object. Force tracebacks off for everything.
-    for view in self.config.views:
-      name = view._internal_name
-      path = "/%s" % self.appname + ((name != index and "/%s" % name) or "")
-      cherrypy.log("INFO: loading %s into %s" % (name, path))
-      obj = factory.loadObject(view.object, [self, view],
-                               listFlag = True,
-                               getFromCache = False)
-      app = Application(obj, path, {"/": {"request.show_tracebacks": False}})
-      if getattr(self.srvconfig, 'profile', False):
-        profdir = "%s/profile" % self.statedir
-        if not os.path.exists(profdir):
-          os.makedirs(profdir)
-        app = ProfiledApp(app, profdir)
-      cherrypy.tree.mount(app)
-      self.views.append(obj)
 
 def main():
   # Re-exec if we don't have unbuffered i/o. This is essential to get server
@@ -455,7 +476,7 @@ def main():
   # Create server object.
   cfg = loadConfigurationFile(args[0])
   app = cfg.main.application.lower()
-  server = ServerDaemon(cfg, opts.statedir)
+  server = RESTDaemon(cfg, opts.statedir)
 
   # Now actually execute the task.
   if opts.status:
