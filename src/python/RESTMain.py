@@ -11,7 +11,6 @@ import sys, os, errno, re, os.path, subprocess, socket, time
 import cherrypy, logging, thread, traceback
 import SiteDB.RESTTools
 from WMCore.Configuration import ConfigSection, loadConfigurationFile
-from WMCore.WMFactory import WMFactory
 from cStringIO import StringIO
 from optparse import OptionParser
 from cherrypy import Application
@@ -201,7 +200,6 @@ class RESTMain:
 
   def install_application(self):
     """Install application and its components from the configuration."""
-    factory = WMFactory("wmc-httpd")
     index = self.srvconfig.index
 
     # First instantiate non-view extensions.
@@ -209,9 +207,9 @@ class RESTMain:
       for ext in self.config.extensions:
         name = ext._internal_name
         cherrypy.log("INFO: instantiating extension %s" % name)
-        obj = factory.loadObject(ext.object, [self, ext],
-                                 listFlag = True,
-                                 getFromCache = False)
+	module_name, class_name = ext.object.rsplit(".", 1)
+	module = __import__(module_name, globals(), locals(), [class_name])
+	obj = getattr(module, class_name)(self, ext)
         self.extensions[name] = obj
 
     # Then instantiate views and mount them to cherrypy. If the view is
@@ -222,9 +220,9 @@ class RESTMain:
       name = view._internal_name
       path = "/%s" % self.appname + ((name != index and "/%s" % name) or "")
       cherrypy.log("INFO: loading %s into %s" % (name, path))
-      obj = factory.loadObject(view.object, [self, view],
-                               listFlag = True,
-                               getFromCache = False)
+      module_name, class_name = view.object.rsplit(".", 1)
+      module = __import__(module_name, globals(), locals(), [class_name])
+      obj = getattr(module, class_name)(self, view)
       app = Application(obj, path, {"/": {"request.show_tracebacks": False}})
       if getattr(self.srvconfig, 'profile', False):
         profdir = "%s/profile" % self.statedir

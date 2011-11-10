@@ -31,8 +31,8 @@ class Config(Configuration):
 
     views = self.section_('views')
     ui = views.section_('ui')
-    ui.object = 'SiteDB.FrontPage'
+    ui.object = 'SiteDB.FrontPage.FrontPage'
 
     data = views.section_('data')
-    data.object = 'SiteDB.Data'
+    data.object = 'SiteDB.Data.Data'
     data.db = db or ('SiteDBAuth', 'dbparam', nthreads)
