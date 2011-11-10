@@ -1,4 +1,4 @@
-import re, signal, cherrypy, traceback, random, xml, cjson, inspect, time, hashlib, imp
+import re, signal, cherrypy, traceback, random, xml, cjson, inspect, time, imp
 from cherrypy import expose, request, response, HTTPError
 from cherrypy.lib.cptools import accept
 from rfc822 import formatdate as HTTPDate
@@ -6,104 +6,19 @@ from collections import namedtuple
 from traceback import format_exc
 from functools import wraps
 from RESTError import *
+from RESTFormat import *
 from RESTValidation import validate_no_more_input
-import xml.sax.saxutils
 
 _METHODS = ('GET', 'HEAD', 'POST', 'PUT', 'DELETE')
 _RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
-
-def _is_iterable(obj):
-  try: iter(obj)
-  except TypeError: return False
-  else: return True
-
-def _xml_obj_format(obj):
-  if isinstance(obj, type(None)):
-    result = ""
-  elif isinstance(obj, (str, int, float, bool)):
-    result = xml.sax.saxutils.escape(str(obj).encode("utf-8"))
-  elif isinstance(obj, dict):
-    result = "<dict>"
-    for k, v in obj.iteritems():
-      assert re.match(r"^[-A-Za-z0-9_]+$", k)
-      result += "<%s>%s</%s>" % (k, _xml_obj_format(v), k)
-    result += "</dict>"
-  elif _is_iterable(obj):
-    result = "<array>"
-    for v in obj:
-      result += "<i>%s</i>" % _xml_obj_format(v)
-    result += "</array>"
-  else:
-    cherrypy.log("cannot represent object of type %s in xml (%s)"
-                 % (type(obj).__class__.__name__, repr(obj)))
-    raise ExecutionError("cannot represent object in xml")
-  return result
-
-def _xml_stream_chunker(preamble, trailer, stream, etag):
-  etagval = None
-
-  try:
-    preamble = "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n" + (preamble or "")
-    etagval = etag(etagval, preamble)
-    yield preamble
-
-    try:
-      for obj in stream:
-        chunk = _xml_obj_format(obj)
-        etagval = etag(etagval, chunk)
-        yield chunk
-    finally:
-      if trailer:
-        etagval = etag(etagval, trailer)
-        yield trailer
-
-    etagval = etag(etagval, None)
-    response.headers["X-REST-Status"] = 100
-  except RESTError, e:
-    report_rest_error(e, format_exc(), False)
-  except Exception, e:
-    report_rest_error(ExecutionError(), format_exc(), False)
-  finally:
-    if etagval:
-      response.headers["ETag"] = etagval
-
-def _json_stream_chunker(preamble, trailer, stream, etag):
-  etagval = None
-  comma = " "
-
-  try:
-    if preamble:
-      etagval = etag(etagval, preamble)
-      yield preamble
-
-    try:
-      for obj in stream:
-        chunk = comma + cjson.encode(obj) + "\n"
-        etagval = etag(etagval, chunk)
-        yield chunk
-        comma = ","
-    finally:
-      if trailer:
-        etagval = etag(etagval, trailer)
-        yield trailer
-
-    etagval = etag(etagval, None)
-    response.headers["X-REST-Status"] = 100
-  except RESTError, e:
-    report_rest_error(e, format_exc(), False)
-  except Exception, e:
-    report_rest_error(ExecutionError(), format_exc(), False)
-  finally:
-    response.headers["ETag"] = etagval
-
 RESTArgs = namedtuple("RESTArgs", ["args", "kwargs"])
 
 class MiniRESTApi:
   def __init__(self, app, config):
     self.app = app
     self.config = config
-    self.formats = [ ('application/json', self._json),
-                     ('application/xml', self._xml) ]
+    self.formats = [ ('application/json', JSONFormat()),
+                     ('application/xml', XMLFormat(self.app.appname)) ]
     self.methods = {}
     self.default_expire = 3600
 
@@ -223,30 +138,6 @@ class MiniRESTApi:
 
   def _precall(self, param):
     pass
-
-  ####################################################################
-  def _json(self, stream, etag):
-    comma = ""
-    preamble = "{"
-    trailer = "}\n"
-    if request.rest_generate_preamble:
-      preamble += '"desc": %s' % cjson.encode(request.rest_generate_preamble)
-      comma = ", "
-    if request.rest_generate_data:
-      preamble += '%s"%s": [\n' % (comma, request.rest_generate_data)
-      trailer = "]" + trailer
-    return _json_stream_chunker(preamble, trailer, stream, etag)
-
-  def _xml(self, stream, etag):
-    preamble = "<%s>" % self.app.appname
-    trailer = "</%s>" % self.app.appname
-    if request.rest_generate_preamble:
-      preamble += "<desc>%s</desc>" % _xml_obj_format(request.rest_generate_preamble)
-    if request.rest_generate_data:
-      preamble += "<%s>" % request.rest_generate_data
-      trailer = ("</%s>" % request.rest_generate_data) + trailer
-    return _xml_stream_chunker(preamble, trailer, stream, etag)
-
 
 ######################################################################
 ######################################################################
@@ -558,19 +449,6 @@ class RESTEntity:
     self.app = app
     self.api = api
     self.config = config
-
-def md5etag(curtag, val):
-  if val == None:
-    if curtag:
-      return curtag.hexdigest()
-    else:
-      return None
-
-  if curtag == None:
-    curtag = hashlib.md5()
-
-  curtag.update(val)
-  return curtag
 
 def restcall(func=None, args=None, generate="result", **kwargs):
   if not func:
