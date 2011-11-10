@@ -69,11 +69,12 @@ class MiniRESTApi:
     # Note that accept() will raise HTTPError(406) if no match is found.
     try:
       if not request.headers.elements('Accept'):
-        raise NotAcceptable()
+        raise NotAcceptable('Accept header required')
       format = accept([x[0] for x in self.formats])
       fmthandler = [x[1] for x in self.formats if x[0] == format][0]
     except HTTPError, e:
-      raise NotAcceptable(e.message)
+      formats = ', '.join(f[0] for f in self.formats)
+      raise NotAcceptable('Available types: %s' % formats)
 
     # Make sure the request method is something we actually support.
     if request.method not in self.methods:
