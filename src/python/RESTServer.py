@@ -12,75 +12,6 @@ import xml.sax.saxutils
 _METHODS = ('GET', 'HEAD', 'POST', 'PUT', 'DELETE')
 _RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
 
-def _error_header(header, val):
-  if val:
-    val = val.replace("\n", "; ")
-    if len(val) > 200: val = val[:197] + "..."
-    response.headers[header] = val
-
-def _rest_error(err, trace, throw):
-  if isinstance(err, DatabaseError) and err.errobj:
-    offset = None
-    sql, binds, kwbinds = err.lastsql
-    if sql and err.errobj.args and hasattr(err.errobj.args[0], 'offset'):
-      offset = err.errobj.args[0].offset
-      sql = sql[:offset] + "<**>" + sql[offset:]
-    cherrypy.log("SERVER DATABASE ERROR %s.%s %s (%s); last statement:"
-                 " %s; binds: %s, %s; offset: %s"
-                 % (getattr(err.errobj, "__module__", "__builtins__"),
-                    err.errobj.__class__.__name__,
-                    err.errid, str(err.errobj).rstrip(), sql, binds, kwbinds,
-                    offset))
-    for line in err.trace.rstrip().split("\n"): cherrypy.log("  " + line)
-    response.headers["X-REST-Status"] = str(err.app_code)
-    response.headers["X-Error-HTTP"] = str(err.http_code)
-    response.headers["X-Error-ID"] = err.errid
-    _error_header("X-Error-Detail", err.message)
-    _error_header("X-Error-Info", err.info)
-    if throw: raise HTTPError(err.http_code, err.message)
-  elif isinstance(err, RESTError):
-    if err.errobj:
-      cherrypy.log("SERVER REST ERROR %s.%s %s (%s); derived from %s.%s (%s)"
-                   % (err.__module__, err.__class__.__name__,
-                      err.errid, err.message,
-                      getattr(err.errobj, "__module__", "__builtins__"),
-                      err.errobj.__class__.__name__,
-		      str(err.errobj).rstrip()))
-      trace = err.trace
-    else:
-      cherrypy.log("SERVER REST ERROR %s.%s %s (%s)"
-                   % (err.__module__, err.__class__.__name__,
-                      err.errid, err.message))
-    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
-    response.headers["X-REST-Status"] = str(err.app_code)
-    response.headers["X-Error-HTTP"] = str(err.http_code)
-    response.headers["X-Error-ID"] = err.errid
-    _error_header("X-Error-Detail", err.message)
-    _error_header("X-Error-Info", err.info)
-    if throw: raise HTTPError(err.http_code, err.message)
-  elif isinstance(err, HTTPError):
-    errid = "%032x" % random.randrange(1 << 128)
-    cherrypy.log("SERVER HTTP ERROR %s.%s %s (%s)"
-                 % (err.__module__, err.__class__.__name__,
-                    errid, str(err).rstrip()))
-    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
-    response.headers["X-REST-Status"] = str(200)
-    response.headers["X-Error-HTTP"] = str(err.status)
-    response.headers["X-Error-ID"] = errid
-    _error_header("X-Error-Detail", err.message)
-    if throw: raise err
-  else:
-    errid = "%032x" % random.randrange(1 << 128)
-    cherrypy.log("SERVER OTHER ERROR %s.%s %s (%s)"
-                 % (getattr(err, "__module__", "__builtins__"),
-                    err.__class__.__name__,
-                    errid, str(err).rstrip()))
-    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
-    response.headers["X-REST-Status"] = 400
-    response.headers["X-Error-HTTP"] = 500
-    response.headers["X-Error-ID"] = errid
-    if throw: raise HTTPError(500, "Server error")
-
 def _is_iterable(obj):
   try: iter(obj)
   except TypeError: return False
@@ -129,9 +60,9 @@ def _xml_stream_chunker(preamble, trailer, stream, etag):
     etagval = etag(etagval, None)
     response.headers["X-REST-Status"] = 100
   except RESTError, e:
-    _rest_error(e, format_exc(), False)
+    report_rest_error(e, format_exc(), False)
   except Exception, e:
-    _rest_error(ExecutionError(), format_exc(), False)
+    report_rest_error(ExecutionError(), format_exc(), False)
   finally:
     if etagval:
       response.headers["ETag"] = etagval
@@ -159,9 +90,9 @@ def _json_stream_chunker(preamble, trailer, stream, etag):
     etagval = etag(etagval, None)
     response.headers["X-REST-Status"] = 100
   except RESTError, e:
-    _rest_error(e, format_exc(), False)
+    report_rest_error(e, format_exc(), False)
   except Exception, e:
-    _rest_error(ExecutionError(), format_exc(), False)
+    report_rest_error(ExecutionError(), format_exc(), False)
   finally:
     response.headers["ETag"] = etagval
 
@@ -206,7 +137,7 @@ class MiniRESTApi:
     try:
       return self._call(RESTArgs(list(args), kwargs))
     except Exception, e:
-      _rest_error(e, format_exc(), True)
+      report_rest_error(e, format_exc(), True)
     finally:
       if getattr(request, 'start_time', None):
         response.headers["X-REST-Time"] = "%.3f us" % \

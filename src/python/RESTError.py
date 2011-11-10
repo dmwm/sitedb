@@ -1,4 +1,4 @@
-import random
+import random, cherrypy
 
 class RESTError(Exception):
   http_code = None
@@ -139,3 +139,86 @@ class ExecutionError(RESTError):
   http_code = 500
   app_code = 403
   message = "Execution error"
+
+def report_error_header(header, val):
+  """If `val` is non-empty, set CherryPy response `header` to `val`.
+  Replaces all newlines with "; " characters. If the resulting value is
+  longer than 200 characters, truncates it to the first 197 characters
+  and leaves a trailing ellipsis "..."."""
+  if val:
+    val = val.replace("\n", "; ")
+    if len(val) > 200: val = val[:197] + "..."
+    cherrypy.response.headers[header] = val
+
+def report_rest_error(err, trace, throw):
+  """Report a REST error: generate an appropriate log message, set the
+  response headers and raise an appropriate HTTPError().
+
+  Normally `throw` would be True to translate the exception `err` into
+  a HTTP server error, but the function can also be called with `throw`
+  set to False if the purpose is merely to log an exception message.
+
+  :arg err: exception object.
+  :arg trace: stack trace to use in case `err` doesn't have one.
+  :arg throw: raise a HTTPError() if True."""
+  if isinstance(err, DatabaseError) and err.errobj:
+    offset = None
+    sql, binds, kwbinds = err.lastsql
+    if sql and err.errobj.args and hasattr(err.errobj.args[0], 'offset'):
+      offset = err.errobj.args[0].offset
+      sql = sql[:offset] + "<**>" + sql[offset:]
+    cherrypy.log("SERVER DATABASE ERROR %s.%s %s (%s); last statement:"
+                 " %s; binds: %s, %s; offset: %s"
+                 % (getattr(err.errobj, "__module__", "__builtins__"),
+                    err.errobj.__class__.__name__,
+                    err.errid, str(err.errobj).rstrip(), sql, binds, kwbinds,
+                    offset))
+    for line in err.trace.rstrip().split("\n"): cherrypy.log("  " + line)
+    cherrypy.response.headers["X-REST-Status"] = str(err.app_code)
+    cherrypy.response.headers["X-Error-HTTP"] = str(err.http_code)
+    cherrypy.response.headers["X-Error-ID"] = err.errid
+    report_error_header("X-Error-Detail", err.message)
+    report_error_header("X-Error-Info", err.info)
+    if throw: raise cherrypy.HTTPError(err.http_code, err.message)
+  elif isinstance(err, RESTError):
+    if err.errobj:
+      cherrypy.log("SERVER REST ERROR %s.%s %s (%s); derived from %s.%s (%s)"
+                   % (err.__module__, err.__class__.__name__,
+                      err.errid, err.message,
+                      getattr(err.errobj, "__module__", "__builtins__"),
+                      err.errobj.__class__.__name__,
+		      str(err.errobj).rstrip()))
+      trace = err.trace
+    else:
+      cherrypy.log("SERVER REST ERROR %s.%s %s (%s)"
+                   % (err.__module__, err.__class__.__name__,
+                      err.errid, err.message))
+    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
+    cherrypy.response.headers["X-REST-Status"] = str(err.app_code)
+    cherrypy.response.headers["X-Error-HTTP"] = str(err.http_code)
+    cherrypy.response.headers["X-Error-ID"] = err.errid
+    report_error_header("X-Error-Detail", err.message)
+    report_error_header("X-Error-Info", err.info)
+    if throw: raise cherrypy.HTTPError(err.http_code, err.message)
+  elif isinstance(err, cherrypy.HTTPError):
+    errid = "%032x" % random.randrange(1 << 128)
+    cherrypy.log("SERVER HTTP ERROR %s.%s %s (%s)"
+                 % (err.__module__, err.__class__.__name__,
+                    errid, str(err).rstrip()))
+    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
+    cherrypy.response.headers["X-REST-Status"] = str(200)
+    cherrypy.response.headers["X-Error-HTTP"] = str(err.status)
+    cherrypy.response.headers["X-Error-ID"] = errid
+    report_error_header("X-Error-Detail", err.message)
+    if throw: raise err
+  else:
+    errid = "%032x" % random.randrange(1 << 128)
+    cherrypy.log("SERVER OTHER ERROR %s.%s %s (%s)"
+                 % (getattr(err, "__module__", "__builtins__"),
+                    err.__class__.__name__,
+                    errid, str(err).rstrip()))
+    for line in trace.rstrip().split("\n"): cherrypy.log("  " + line)
+    cherrypy.response.headers["X-REST-Status"] = 400
+    cherrypy.response.headers["X-Error-HTTP"] = 500
+    cherrypy.response.headers["X-Error-ID"] = errid
+    if throw: raise cherrypy.HTTPError(500, "Server error")
