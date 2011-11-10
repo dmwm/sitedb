@@ -10,6 +10,7 @@ from RESTValidation import validate_no_more_input
 import xml.sax.saxutils
 
 _METHODS = ('GET', 'HEAD', 'POST', 'PUT', 'DELETE')
+_RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
 
 def _error_header(header, val):
   if val:
@@ -479,6 +480,10 @@ class DatabaseRESTApi(MiniRESTApi):
         if dbtrace: cherrypy.log("TRACE SQL liveness: %s" % db['liveness'])
         dbconn.cursor().execute(db['liveness'])
 
+	if 'auth-role' in db:
+          if dbtrace: cherrypy.log("TRACE SQL acquire role")
+          dbconn.cursor().execute("set role %s identified by %s" % db['auth-role'])
+
         if 'session-sql' in db:
           for sql in db['session-sql']:
             if dbtrace: cherrypy.log("TRACE SQL session-sql: %s" % sql)
@@ -528,7 +533,7 @@ class DatabaseRESTApi(MiniRESTApi):
   def prepare(self, sql):
     assert request.dbconn, "DB connection missing"
     sql = self.sqlformat(None, sql) # FIXME: schema prefix?
-    request.last_statement_sql = sql
+    request.last_statement_sql = re.sub(_RX_CENSOR, r"\1 <censored>", sql)
     request.last_statement_binds = None, None
     if request.dbtrace: cherrypy.log("TRACE SQL prepare: %s" % sql)
     c = request.dbconn.cursor()
