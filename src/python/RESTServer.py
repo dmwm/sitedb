@@ -338,7 +338,7 @@ class DatabaseRESTApi(RESTApi):
 
     for i in xrange(0, 5):
       try:
-        if dbtrace: cherrypy.log("TRACE SQL connecting")
+        dbtrace and cherrypy.log("TRACE SQL connecting")
         dbconn = db['pool'].acquire()
         dbconn.current_schema = db['schema']
         dbconn.client_identifier = db['clientid']
@@ -347,22 +347,22 @@ class DatabaseRESTApi(RESTApi):
                                    apiobj['entity'].__class__.__name__)
         dbconn.action = action
 
-        if dbtrace: cherrypy.log("TRACE SQL ping")
+        dbtrace and cherrypy.log("TRACE SQL ping")
         dbconn.ping()
 
-        if dbtrace: cherrypy.log("TRACE SQL liveness: %s" % db['liveness'])
+        dbtrace and cherrypy.log("TRACE SQL liveness: %s" % db['liveness'])
         dbconn.cursor().execute(db['liveness'])
 
 	if 'auth-role' in db:
-          if dbtrace: cherrypy.log("TRACE SQL acquire role")
+          dbtrace and cherrypy.log("TRACE SQL acquire role")
           dbconn.cursor().execute("set role %s identified by %s" % db['auth-role'])
 
         if 'session-sql' in db:
           for sql in db['session-sql']:
-            if dbtrace: cherrypy.log("TRACE SQL session-sql: %s" % sql)
+            dbtrace and cherrypy.log("TRACE SQL session-sql: %s" % sql)
             dbconn.cursor().execute(sql)
 
-        if dbtrace: cherrypy.log("TRACE SQL connected")
+        dbtrace and cherrypy.log("TRACE SQL connected")
         request.dbpool = db['pool']
         request.dbtrace = dbtrace
         request.dbtype = dbtype
@@ -376,12 +376,12 @@ class DatabaseRESTApi(RESTApi):
         time.sleep(0.1)
 
     signal.alarm(0)
-    if dbtrace: cherrypy.log("TRACE SQL connection failed: %s" % lasterr)
+    dbtrace and cherrypy.log("TRACE SQL connection failed: %s" % lasterr)
     self._dberror(db['pool'], dbtype, dbconn, lasterr[0], lasterr[1], True)
 
   def _dbexit(self):
     if request.dbconn:
-      if request.dbtrace: cherrypy.log("TRACE SQL exit")
+      request.dbtrace and cherrypy.log("TRACE SQL exit")
       request.dbconn.rollback()
       request.dbpool.release(request.dbconn)
     request.db = None
@@ -410,7 +410,7 @@ class DatabaseRESTApi(RESTApi):
     sql = self.sqlformat(None, sql) # FIXME: schema prefix?
     request.last_statement_sql = re.sub(_RX_CENSOR, r"\1 <censored>", sql)
     request.last_statement_binds = None, None
-    if request.dbtrace: cherrypy.log("TRACE SQL prepare: %s" % sql)
+    request.dbtrace and cherrypy.log("TRACE SQL prepare: %s" % sql)
     c = request.dbconn.cursor()
     c.prepare(sql)
     return c
@@ -418,13 +418,13 @@ class DatabaseRESTApi(RESTApi):
   def execute(self, sql, *binds, **kwbinds):
     c = self.prepare(sql)
     request.last_statement_binds = (binds, kwbinds)
-    if request.dbtrace: cherrypy.log("TRACE SQL execute: %s %s" % (binds, kwbinds))
+    request.dbtrace and cherrypy.log("TRACE SQL execute: %s %s" % (binds, kwbinds))
     return c, c.execute(None, *binds, **kwbinds)
 
   def executemany(self, sql, *binds, **kwbinds):
     c = self.prepare(sql)
     request.last_statement_binds = (binds, kwbinds)
-    if request.dbtrace: cherrypy.log("TRACE SQL executemany: %s %s" % (binds, kwbinds))
+    request.dbtrace and cherrypy.log("TRACE SQL executemany: %s %s" % (binds, kwbinds))
     return c, c.executemany(None, *binds, **kwbinds)
 
   def query(self, match, select, sql, *binds, **kwbinds):
@@ -445,7 +445,7 @@ class DatabaseRESTApi(RESTApi):
       c, _ = self.executemany(sql, kwbinds, *binds)
       expected = len(kwbinds)
     result = self.rowstatus(c, expected)
-    if request.dbtrace: cherrypy.log("TRACE SQL commit")
+    request.dbtrace and cherrypy.log("TRACE SQL commit")
     request.dbconn.commit()
     return result
 
