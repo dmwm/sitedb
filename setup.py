@@ -51,9 +51,11 @@ class BuildCommand(Command):
     "\t\t   build of only the requested parts.\n"
   user_options = build.user_options
   user_options.append(('system=', 's', 'build the specified system (default: SiteDB)'))
+  user_options.append(('skip-docs', None, 'skip documentation'))
 
   def initialize_options(self):
     self.system = "SiteDB"
+    self.skip_docs = False
 
   def finalize_options(self):
     if self.system not in systems:
@@ -68,8 +70,9 @@ class BuildCommand(Command):
     shutil.rmtree("doc/build", True)
 
   def generate_docs(self):
-    os.environ["PYTHONPATH"] = "%s/build/lib:%s" % (os.getcwd(), os.environ["PYTHONPATH"])
-    spawn(['make', '-C', 'doc', 'html', 'PROJECT=%s' % "."]) #self.system.lower()])
+    if not self.skip_docs:
+      os.environ["PYTHONPATH"] = "%s/build/lib:%s" % (os.getcwd(), os.environ["PYTHONPATH"])
+      spawn(['make', '-C', 'doc', 'html', 'PROJECT=%s' % "."]) #self.system.lower()])
 
   def run(self):
     command = 'build'
@@ -89,11 +92,13 @@ class InstallCommand(install):
   user_options = install.user_options
   user_options.append(('system=', 's', 'install the specified system (default: SiteDB)'))
   user_options.append(('patch', None, 'patch an existing installation (default: no patch)'))
+  user_options.append(('skip-docs', None, 'skip documentation'))
 
   def initialize_options(self):
     install.initialize_options(self)
     self.system = "SiteDB"
     self.patch = None
+    self.skip_docs = False
 
   def finalize_options(self):
     # Check options.
