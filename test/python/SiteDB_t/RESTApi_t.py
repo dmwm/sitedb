@@ -53,11 +53,11 @@ class Image(RESTEntity):
     return gif_bytes
 
 class Root(RESTApi):
-  def __init__(self, app, config):
-    RESTApi.__init__(self, app, config)
-    self._add({ "simple": Simple(app, self, config),
-	        "image":  Image(app, self, config),
-	        "multi":  Multi(app, self, config) })
+  def __init__(self, app, config, mount):
+    RESTApi.__init__(self, app, config, mount)
+    self._add({ "simple": Simple(app, self, config, mount),
+	        "image":  Image(app, self, config, mount),
+	        "multi":  Multi(app, self, config, mount) })
 
 class Tester(helper.CPWebCase):
   def _test_accept_ok(self, fmt, page = "/test/simple", inbody = None):

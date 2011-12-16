@@ -11,20 +11,20 @@ from SiteDB.DataUserSites import *
 
 class Data(DatabaseRESTApi):
   """Server object for REST data access API."""
-  def __init__(self, app, config):
+  def __init__(self, app, config, mount):
     """
     :arg app: reference to application object; passed to all entities.
     :arg config: reference to configuration; passed to all entities."""
-    DatabaseRESTApi.__init__(self, app, config)
-    self._add({ "whoami":                 WhoAmI(app, self, config),
-                "roles":                  Roles(app, self, config),
-                "groups":                 Groups(app, self, config),
-                "people":                 People(app, self, config),
-                "sites":                  Sites(app, self, config),
-                "site-names":             SiteNames(app, self, config),
-                "site-resources":         SiteResources(app, self, config),
-                "site-associations":      SiteAssociations(app, self, config),
-                "resource-pledges":       Pledges(app, self, config),
-                "pinned-software":        Software(app, self, config),
-                "site-responsibilities":  UserSites(app, self, config),
-                "group-responsibilities": UserGroups(app, self, config) })
+    DatabaseRESTApi.__init__(self, app, config, mount)
+    self._add({ "whoami":                 WhoAmI(app, self, config, mount),
+                "roles":                  Roles(app, self, config, mount),
+                "groups":                 Groups(app, self, config, mount),
+                "people":                 People(app, self, config, mount),
+                "sites":                  Sites(app, self, config, mount),
+                "site-names":             SiteNames(app, self, config, mount),
+                "site-resources":         SiteResources(app, self, config, mount),
+                "site-associations":      SiteAssociations(app, self, config, mount),
+                "resource-pledges":       Pledges(app, self, config, mount),
+                "pinned-software":        Software(app, self, config, mount),
+                "site-responsibilities":  UserSites(app, self, config, mount),
+                "group-responsibilities": UserGroups(app, self, config, mount) })

@@ -14,7 +14,7 @@ _RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
 RESTArgs = namedtuple("RESTArgs", ["args", "kwargs"])
 
 class MiniRESTApi:
-  def __init__(self, app, config):
+  def __init__(self, app, config, mount):
     self.app = app
     self.config = config
     self.formats = [ ('application/json', JSONFormat()),
@@ -185,9 +185,9 @@ class RESTApi(MiniRESTApi):
 # - use c.current_schema / alter session set current_schema = foo
 
 class DatabaseRESTApi(RESTApi):
-  def __init__(self, app, config):
+  def __init__(self, app, config, mount):
     class DBFactory: pass
-    RESTApi.__init__(self, app, config)
+    RESTApi.__init__(self, app, config, mount)
     factory = DBFactory()
     mod, fun, args = config.db[0], config.db[1], config.db[2:]
     exec ("from %s import %s\nf.__call__ = %s\n" % (mod, fun, fun)) in {}, {"f": factory}
@@ -446,10 +446,11 @@ class DatabaseRESTApi(RESTApi):
     return [dict(zip(keys, vals)) for vals in zip(*kwargs.values())]
 
 class RESTEntity:
-  def __init__(self, app, api, config):
+  def __init__(self, app, api, config, mount):
     self.app = app
     self.api = api
     self.config = config
+    self.mount = mount
 
 def restcall(func=None, args=None, generate="result", **kwargs):
   def apply_restcall_opts(func, args=args, generate=generate, kwargs=kwargs):

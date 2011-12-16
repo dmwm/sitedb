@@ -45,14 +45,14 @@ def dbparam(nthreads):
 
 class AdminServer(Data):
   """Server object for REST data access API bootstrap operations."""
-  def __init__(self, app, config):
+  def __init__(self, app, config, mount):
     """
     :arg app: reference to application object; passed to all entities.
     :arg config: reference to configuration; passed to all entities."""
-    Data.__init__(self, app, config)
-    self._add({ "tiers":                  Tiers(app, self, config),
-                "accounts":               Accounts(app, self, config),
-                "schema":                 Schema(app, self, config) })
+    Data.__init__(self, app, config, mount)
+    self._add({ "tiers":                  Tiers(app, self, config, mount),
+                "accounts":               Accounts(app, self, config, mount),
+                "schema":                 Schema(app, self, config, mount) })
 
 class AdminClient(helper.CPWebCase):
   _authz_headers = None

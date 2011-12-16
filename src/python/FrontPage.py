@@ -20,7 +20,7 @@ class FrontPage:
   User navigation state is stored in the fragment part of the URL, e.g.
   <https://cmsweb.cern.ch/sitedb#v,s,CERN> to view site 'CERN'."""
 
-  def __init__(self, app, config):
+  def __init__(self, app, config, mount):
     """Initialise the main server."""
     DIR = os.path.abspath(__file__).rsplit('/', 5)[0]
     PVS = os.environ["PROTOVIS_ROOT"]

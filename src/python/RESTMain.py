@@ -226,7 +226,7 @@ class RESTMain:
         cherrypy.log("INFO: loading %s into %s" % (name, path))
       module_name, class_name = view.object.rsplit(".", 1)
       module = __import__(module_name, globals(), locals(), [class_name])
-      obj = getattr(module, class_name)(self, view)
+      obj = getattr(module, class_name)(self, view, path)
       app = Application(obj, path, {"/": {"request.show_tracebacks": False}})
       if getattr(self.srvconfig, 'profile', False):
         profdir = "%s/profile" % self.statedir
