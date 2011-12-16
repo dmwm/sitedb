@@ -2,6 +2,14 @@ import re, cherrypy, cjson, types, hashlib, xml.sax.saxutils, zlib
 from RESTError import RESTError, ExecutionError, report_rest_error
 from traceback import format_exc
 
+def vary_by(header):
+  """Add 'Vary' header for @a header."""
+  varies = cherrypy.response.headers.get('Vary', '')
+  varies = [x.strip() for x in varies.split(",") if x.strip()]
+  if header not in varies:
+    varies.append(header)
+  cherrypy.response.headers['Vary'] = ", ".join(varies)
+
 def is_iterable(obj):
   """Check if `obj` is iterable."""
   try:
@@ -364,11 +372,7 @@ def stream_compress(reply, available, compress_level, max_chunk):
 
     elif enc.value in _stream_compressor and compress_level > 0:
       # Add 'Vary' header for 'Accept-Encoding'.
-      varies = cherrypy.response.headers.get('Vary', '')
-      varies = [x.strip() for x in varies.split(",") if x.strip()]
-      if 'Accept-Encoding' not in varies:
-        varies.append('Accept-Encoding')
-      cherrypy.response.headers['Vary'] = ", ".join(varies)
+      vary_by('Accept-Encoding')
 
       # Compress contents at original chunk boundaries.
       if cherrypy.response.headers.has_key('Content-Length'):

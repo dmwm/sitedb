@@ -123,6 +123,9 @@ class MiniRESTApi:
     # Invoke the method.
     obj = apiobj['call'](*safe.args, **safe.kwargs)
 
+    # Add Vary: Accept header.
+    vary_by('Accept')
+
     # Set expires header if applicable. Note that POST/PUT/DELETE are not
     # cacheable to begin with according to HTTP/1.1 specification. We must
     # do this before actually streaming out the response below in case the
