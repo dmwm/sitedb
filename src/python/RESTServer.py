@@ -187,7 +187,7 @@ class RESTApi(MiniRESTApi):
 class DatabaseRESTApi(RESTApi):
   def __init__(self, app, config):
     class DBFactory: pass
-    MiniRESTApi.__init__(self, app, config)
+    RESTApi.__init__(self, app, config)
     factory = DBFactory()
     mod, fun, args = config.db[0], config.db[1], config.db[2:]
     exec ("from %s import %s\nf.__call__ = %s\n" % (mod, fun, fun)) in {}, {"f": factory}
