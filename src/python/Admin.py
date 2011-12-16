@@ -1,3 +1,4 @@
+import os, cherrypy, cjson, socket, cx_Oracle
 from cherrypy.test import test, webtest, helper
 from SiteDB.RESTTest import fake_authz_headers, fake_authz_key_file
 from SiteDB.RESTMain import RESTMain
@@ -9,39 +10,20 @@ from SiteDB.DataSchema import *
 from SiteDB.DataTiers import *
 from cherrypy import expose
 from getpass import getpass
-import os, cherrypy, cjson
 
 server = None
 authz_key = None
-dbparam = None
-AUTH = """
-def dbparam(nthreads):
-  import cx_Oracle as DB
-  import socket
-
-  def pool(user, password, dsn, min, max, increment, timeout):
-    p = DB.SessionPool(user, password, dsn, min, max, increment)
-    p.timeout = timeout
-    return p
-
-  return {
-    'admin':
-    { '*':
-      { 'type': DB,
-        'trace': True,
-        'schema': "@USER@",
-        'clientid': "sitedb-admin@%s" % socket.getfqdn().lower(),
-        'liveness': "select sysdate from dual",
-        'pool': pool(user = "@USER@",
-	             password = "@PASSWORD@",
-	             dsn = "@SERVICE@",
-	             min = min(1, nthreads),
-	             max = 2 + nthreads,
-	             increment = 2,
-	             timeout = 300) },
-    }
-  }
-"""
+AUTH = { 'admin': { '*': { 'type': cx_Oracle,
+                           'trace': True,
+                           'schema': "",
+                           'clientid': "sitedb-admin@%s" % socket.getfqdn().lower(),
+                           'liveness': "select sysdate from dual",
+                           'user': "",
+	                   'password': "",
+	                   'dsn': "",
+	                   'timeout': 300 },
+                  }
+       }
 
 class AdminServer(Data):
   """Server object for REST data access API bootstrap operations."""
@@ -145,16 +127,12 @@ class AdminClient(helper.CPWebCase):
 	      {"contact": "peter.kreuzer@cern.ch", "role": "Global Admin", "group": "global"},
 	      {"contact": "rossman@fnal.gov", "role": "Global Admin", "group": "global"})
 
-def init_server_auth(user, service, password = None):
-  auth = AUTH
-  subst = { "@USER@": user, "@SERVICE@": service,
-            "@PASSWORD@": password or getpass("%s@%s password: " % (user, service)) }
-  for k, v in subst.iteritems():
-    auth = auth.replace(k, v)
-  exec auth in locals(), globals()
-
-  import SiteDB.Admin # 'global' is not enough
-  SiteDB.Admin.dbparam = dbparam
+def init_server_auth(user, service, password = None, schema = None):
+  p = AUTH["admin"]["*"]
+  p["dsn"] = service
+  p["schema"] = schema or user
+  p["user"] = user
+  p["password"] = password or getpass("%s@%s password: " % (user, service))
 
 def setup_server():
   global server, authz_key
@@ -164,8 +142,7 @@ def setup_server():
   cfg.main.index = 'data'
   cfg.main.silent = True
   cfg.views.data.object = "SiteDB.Admin.AdminServer"
-  cfg.views.data.db = ("SiteDB.Admin", "dbparam",
-		       cfg.main.server.thread_pool_size)
+  cfg.views.data.db = "SiteDB.Admin.AUTH"
   server = RESTMain(cfg, os.getcwd())
   server.validate_config()
   server.setup_server()

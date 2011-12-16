@@ -35,4 +35,4 @@ class Config(Configuration):
 
     data = views.section_('data')
     data.object = 'SiteDB.Data.Data'
-    data.db = db or ('SiteDBAuth', 'dbparam', nthreads)
+    data.db = db or 'SiteDBAuth.dbparam'

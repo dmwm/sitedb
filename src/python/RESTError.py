@@ -169,9 +169,10 @@ def report_rest_error(err, trace, throw):
     if sql and err.errobj.args and hasattr(err.errobj.args[0], 'offset'):
       offset = err.errobj.args[0].offset
       sql = sql[:offset] + "<**>" + sql[offset:]
-    cherrypy.log("SERVER DATABASE ERROR %s.%s %s [instance: %s] (%s);"
+    cherrypy.log("SERVER DATABASE ERROR %d/%d %s %s.%s %s [instance: %s] (%s);"
                  " last statement: %s; binds: %s, %s; offset: %s"
-                 % (getattr(err.errobj, "__module__", "__builtins__"),
+                 % (err.http_code, err.app_code, err.message,
+                    getattr(err.errobj, "__module__", "__builtins__"),
                     err.errobj.__class__.__name__,
                     err.errid, err.instance, str(err.errobj).rstrip(),
                     sql, binds, kwbinds, offset))
