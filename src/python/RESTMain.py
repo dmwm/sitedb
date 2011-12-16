@@ -20,8 +20,13 @@ from subprocess import Popen, PIPE
 from glob import glob
 from signal import *
 
+#: Terminal controls to switch to "OK" status message colour.
 COLOR_OK = "\033[0;32m"
+
+#: Terminal controls to switch to "warning" status message colour.
 COLOR_WARN = "\033[0;31m"
+
+#: Terminal controls to restore normal message colour.
 COLOR_NORMAL = "\033[0;39m"
 
 def sig_terminate(signum=None, frame=None):
@@ -50,6 +55,9 @@ def sig_graceful(signum=None, frame=None):
   cherrypy.engine.graceful()
 
 class ProfiledApp(Application):
+  """Wrapper CherryPy Application object which generates aggregated
+  profiles for the component on each call. Note that there needs to
+  be an instance of this for each mount point to be profiled."""
   def __init__(self, app, path):
     Application.__init__(self, app.root, app.script_name, app.config)
     self.profiler = profiler.ProfileAggregator(path)
@@ -97,24 +105,24 @@ class Logger(LogManager):
          'a': inheaders.get("User-Agent", "") })
 
 class RESTMain:
-  """Base class for the core cherrypy main application object.
+  """Base class for the core CherryPy main application object.
 
-  The `RESTMain` implements basic functionality of a cherrypy-based server.
-  Most users will want the fully functional `RESTDaemon` instead; but in
-  some cases such as tests and other single-shot jobs which don't require a
-  daemon process this class is useful in its own right.
+  The :class:`~.RESTMain` implements basic functionality of a CherryPy-based
+  server. Most users will want the fully functional :class:`~.RESTDaemon`
+  instead; but in some cases such as tests and other single-shot jobs which
+  don't require a daemon process this class is useful in its own right.
 
   The class implements the methods required to configure, but not run, a
-  cherrypy server set up with an application configuration.
+  CherryPy server set up with an application configuration.
 
   The main application object takes the server configuration and state
-  directory as parametres. It provides methods to create full cherrypy
+  directory as parametres. It provides methods to create full CherryPy
   serer and configure the application based on configuration description."""
   def __init__(self, config, statedir):
     """Prepare the server.
 
-    @param config -- server configuration
-    @param statedir -- server state directory."""
+    :arg config: server configuration
+    :arg str statedir: server state directory."""
     self.config = config
     self.appname = config.main.application.lower()
     self.appconfig = config.section_(self.appname)
@@ -139,12 +147,12 @@ class RESTMain:
     These are: engine, hooks, log, request, respose, server, tools,
     wsgi, checker.
 
-    Also applies pseudo-parameters 'thread_stack_size' (default: 128kB)
-    and 'sys_check_interval' (default: 10000). The former sets the
+    Also applies pseudo-parameters ``thread_stack_size`` (default: 128kB)
+    and ``sys_check_interval`` (default: 10000). The former sets the
     default stack size to desired value, to avoid excessively large
     thread stacks -- typical operating system default is 8 MB, which
     adds up rather a lot for lots of server threads. The latter sets
-    python's `sys.setcheckinterval`; the default is to increase this
+    python's ``sys.setcheckinterval``; the default is to increase this
     to avoid unnecessarily frequent checks for python's GIL, global
     interpreter lock. In general we want each thread to complete as
     quickly as possible without making unnecessary checks."""
@@ -254,8 +262,8 @@ class RESTDaemon(RESTMain):
   def __init__(self, config, statedir):
     """Initialise the daemon.
 
-    @param config -- server configuration
-    @param statedir -- server state directory."""
+    :arg config: server configuration
+    :arg str statedir: server state directory."""
     RESTMain.__init__(self, config, statedir)
     self.pidfile = "%s/pid" % self.statedir
     self.logfile = ["rotatelogs", "%s/%s-%%Y%%m%%d.log" % (self.statedir, self.appname), "86400"]
@@ -268,10 +276,10 @@ class RESTDaemon(RESTMain):
     If yes, reports the daemon as running, otherwise reports either a
     stale daemon no longer running or no deamon running at all.
 
-    @return A tuple (running, pgid). The first value will be True if a
-    running daemon was found, in which case pid will be its PGID. The
-    first value will be false otherwise, and pgid will be either None
-    if no pid file was found, or an integer if there was a stale file."""
+    :returns: A tuple (running, pgid). The first value will be True if a
+      running daemon was found, in which case pid will be its PGID. The
+      first value will be false otherwise, and pgid will be either None
+      if no pid file was found, or an integer if there was a stale file."""
     pid = None
     try:
       pid = int(open(self.pidfile).readline())
@@ -296,7 +304,7 @@ class RESTDaemon(RESTMain):
     The message about removing a stale pid file cannot be silenced. All
     other messages are squelched if `silent` is True.
 
-    @param silent -- do not print any messages if True."""
+    :arg bool silent: do not print any messages if True."""
     running, pid = self.daemon_pid()
     if not running:
       if pid != None:

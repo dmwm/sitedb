@@ -5,7 +5,18 @@ from SiteDB.RESTValidation import *
 from SiteDB.Regexps import *
 
 class UserGroups(RESTEntity):
+  """REST entity for group privilege assocations.
+
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *email*              person's e-mail           string matching :obj:`.RX_EMAIL`     required
+  *user_group*         group name                string matching :obj:`.RX_LABEL`     required
+  *role*               role title                string matching :obj:`.RX_LABEL`     required
+  ==================== ========================= ==================================== ====================
+  """
   def validate(self, apiobj, method, api, param, safe):
+    """Validate request input data."""
     if method in ('PUT', 'DELETE'):
       validate_strlist('email', param, safe, RX_EMAIL)
       validate_strlist('user_group', param, safe, RX_LABEL)
@@ -16,6 +27,12 @@ class UserGroups(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self):
+    """Retrieve group privilege associations. The results aren't ordered in
+    any particular way.
+
+    :returns: sequence of rows of associations; field order in the returned
+              *desc.columns*."""
+
     return self.api.query(None, None, """
       select ct.email, g.name user_group, r.title role
       from group_responsibility gr
@@ -26,6 +43,18 @@ class UserGroups(RESTEntity):
 
   @restcall
   def put(self, email, user_group, role):
+    """Insert new privilege associations. The caller needs to have global
+    admin privileges. When more than one argument is given, there must be
+    an equal number of arguments for all the parameters. For input
+    validation requirements, see the field descriptions above. It is an
+    error to attempt to insert an existing association triplet.
+
+    :arg list email: new values;
+    :arg list user_group: new values;
+    :arg list role: new values;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              inserted into the database, which is always *len(email).*"""
+
     return self.api.modify("""
       insert into group_responsibility (contact, role, user_group)
       values ((select id from contact where email = :email),
@@ -35,6 +64,18 @@ class UserGroups(RESTEntity):
 
   @restcall
   def delete(self, email, user_group, role):
+    """Delete privilege associations. The caller needs to have global admin
+    privileges. When more than one argument is given, there must be an equal
+    number of arguments for all the parameters. For input validation
+    requirements, see the field descriptions above. It is an error to attempt
+    to delete a non-existent association triplet.
+
+    :arg list email: values to delete;
+    :arg list user_group: values to delete;
+    :arg list role: values to delete;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              deleted from teh database, which is always *len(email).*"""
+
     return self.api.modify("""
       delete from group_responsibility
       where contact = (select id from contact where email = :email)

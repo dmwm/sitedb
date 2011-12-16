@@ -3,7 +3,7 @@ from RESTError import RESTError, ExecutionError, report_rest_error
 from traceback import format_exc
 
 def vary_by(header):
-  """Add 'Vary' header for @a header."""
+  """Add 'Vary' header for `header`."""
   varies = cherrypy.response.headers.get('Vary', '')
   varies = [x.strip() for x in varies.split(",") if x.strip()]
   if header not in varies:

@@ -33,9 +33,9 @@ class Tiers(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve tiers.
+    """Retrieve tiers. The results aren't ordered in any particular way.
 
-    :arg string match: optional regular expression to filter by *name*
+    :arg str match: optional regular expression to filter by *name*
     :returns: sequence of rows of tiers; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(1),

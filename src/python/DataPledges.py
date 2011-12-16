@@ -8,21 +8,21 @@ from operator import itemgetter
 class Pledges(RESTEntity):
   """REST entity object for site resource pledges.
 
-  ==================== ========================= ================================== ====================
-  Contents             Meaning                   Value                              Constraints
-  ==================== ========================= ================================== ====================
-  *site*               site name                 string matching :obj:`.RX_SITE`    required, unique
-  *date*               date the pledge was made  real, unix epoch time stamp        listed on read
-  *quarter*            quarter                   real, YYYY.QUARTER                 required
-  *cpu*                total cpu capacity, kHS06 real, >= 0                         optional
-  *job_slots*          number of job slots       real, >= 0                         optional
-  *disk_store*         disk capacity, TB         real, >= 0                         optional
-  *tape_store*         tape capacity, TB         real, >= 0                         optional
-  *wan_store*          wan buffer capacity, TB   real, >= 0                         optional
-  *local_store*        local disk capacty, TB    real, >= 0                         optional
-  *national_bandwidth* national bandwidth, Gbps  real, >= 0                         optional
-  *opn_bandwidth*      lcg opn bandwidth, Gbps   real, >= 0                         optional
-  ==================== ========================= ================================== ====================
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *date*               date the pledge was made  real, unix epoch time stamp          listed on read
+  *quarter*            quarter                   real, YYYY.QUARTER                   required
+  *cpu*                total cpu capacity, kHS06 real, >= 0                           optional
+  *job_slots*          number of job slots       real, >= 0                           optional
+  *disk_store*         disk capacity, TB         real, >= 0                           optional
+  *tape_store*         tape capacity, TB         real, >= 0                           optional
+  *wan_store*          wan buffer capacity, TB   real, >= 0                           optional
+  *local_store*        local disk capacty, TB    real, >= 0                           optional
+  *national_bandwidth* national bandwidth, Gbps  real, >= 0                           optional
+  *opn_bandwidth*      lcg opn bandwidth, Gbps   real, >= 0                           optional
+  ==================== ========================= ==================================== ====================
 
   All pledges made are recorded in the database. Hence pledges cannot be
   updated or deleted as such, the site simply makes a new pledge for the
@@ -60,9 +60,12 @@ class Pledges(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve pledges.
+    """Retrieve pledges. The results aren't ordered in any particular
+    way except that for any given site's quarter, they are ordered by
+    increasing pledge date, i.e. last entry for a site's quarter is the
+    "current" one.
 
-    :arg string match: optional regular expression to filter by *site*
+    :arg str match: optional regular expression to filter by *site*
     :returns: sequence of rows of pledges; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), """

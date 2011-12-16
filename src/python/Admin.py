@@ -30,19 +30,33 @@ class AdminServer(Data):
   def __init__(self, app, config, mount):
     """
     :arg app: reference to application object; passed to all entities.
-    :arg config: reference to configuration; passed to all entities."""
+    :arg config: reference to configuration; passed to all entities.
+    :arg str mount: API URL mount point; passed to all entities."""
     Data.__init__(self, app, config, mount)
     self._add({ "tiers":                  Tiers(app, self, config, mount),
                 "accounts":               Accounts(app, self, config, mount),
                 "schema":                 Schema(app, self, config, mount) })
 
 class AdminClient(helper.CPWebCase):
+  """Client command operations."""
+
+  #: Headers to be used for all request, mainly internal authorisation ones.
   _authz_headers = None
 
+  def __init__(self, *args, **kwargs):
+    helper.CPWebCase.__init__(self, *args, **kwargs)
+
   def runTest(self):
+    """This isn't a test suite, we just run as one to get an internal server."""
     pass
 
   def _marshall(self, args):
+    """Build a MIME multi-part form body from arguments.
+
+    :arg list args: sequence of key-value dictionaries for the form data.
+    :returns: A tuple (headers, body), where headers is a list of tuples
+             and body a string.
+    """
     boundary = 'BOUNDARY'
     body, crlf = '', '\r\n'
     for kv in args:
@@ -56,6 +70,10 @@ class AdminClient(helper.CPWebCase):
 	    body)
 
   def _authenticate(self):
+    """Return headers to authentication ourselves as a global admin, plus
+    an 'Accept' header for JSON content type.
+
+    :returns: a sequence of (header, value) tuples."""
     if not self._authz_headers:
       self._authz_headers = fake_authz_headers\
         (authz_key.data, roles = {"Global Admin": {'group': ['global']}})
@@ -63,6 +81,9 @@ class AdminClient(helper.CPWebCase):
     return self._authz_headers
 
   def get_schema(self):
+    """Print out the current schema.
+
+    :returns: Nothing."""
     authz = self._authenticate()
     self.getPage("/sitedb/admin/schema", headers=authz)
     self.assertStatus("200 OK")
@@ -71,6 +92,10 @@ class AdminClient(helper.CPWebCase):
       print row
 
   def modify_schema(self, action):
+    """Archive current schema, or move archive back to current.
+
+    :arg str action: ``archive`` or ``restore``.
+    :returns: Nothing."""
     assert action in ('archive', 'restore')
     authz = self._authenticate()
     h, b = self._marshall([{"action": action}])
@@ -79,6 +104,10 @@ class AdminClient(helper.CPWebCase):
     self.assertHeader("X-REST-Status", "100")
 
   def remove_schema(self, action):
+    """Remove current or archived schema, or both.
+
+    :arg str action: ``all``, ``current`` or ``archive``.
+    :returns: Nothing."""
     assert action in ('all', 'current', 'archive')
     authz = self._authenticate()
     h, b = self._marshall([{"action": action}])
@@ -87,6 +116,11 @@ class AdminClient(helper.CPWebCase):
     self.assertHeader("X-REST-Status", "100")
 
   def _put(self, to, *args):
+    """Perform one PUT operation to server, marshalling arguments.
+
+    :arg str to: entity name.
+    :arg list args: sequence of dictionaries for objects to insert.
+    :returns: Nothing."""
     authz = self._authenticate()
     h, b = self._marshall(args)
     self.getPage("/sitedb/admin/%s" % to, method="PUT", body=b, headers=h+authz)
@@ -95,6 +129,9 @@ class AdminClient(helper.CPWebCase):
     self.assertMatchesBody(r"""\{ "modified": %d \}""" % len(args))
 
   def load_schema(self):
+    """Insert schema plus essential seed data.
+
+    :returns: Nothing."""
     self._put("schema")
     self._put("tiers",
 	      {"position": 0, "name": "Tier 0"},
@@ -128,6 +165,12 @@ class AdminClient(helper.CPWebCase):
 	      {"contact": "rossman@fnal.gov", "role": "Global Admin", "group": "global"})
 
 def init_server_auth(user, service, password = None, schema = None):
+  """Configure authentication and schema information.
+
+  :arg str user: User name.
+  :arg str service: Database service name, usually TNS entry name.
+  :arg str password: Password. If None, will prompt for password.
+  :arg str schema: Schema name. If None, uses :ref:`user`."""
   p = AUTH["admin"]["*"]
   p["dsn"] = service
   p["schema"] = schema or user
@@ -135,6 +178,7 @@ def init_server_auth(user, service, password = None, schema = None):
   p["password"] = password or getpass("%s@%s password: " % (user, service))
 
 def setup_server():
+  """Create and set up an internal REST server for admin operations."""
   global server, authz_key
   authz_key = fake_authz_key_file()
   cfg = Config(authkey = authz_key.name)

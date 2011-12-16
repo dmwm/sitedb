@@ -9,18 +9,18 @@ import cherrypy
 class People(RESTEntity):
   """REST entity object for people information.
 
-  ==================== ========================= ================================== ====================
-  Contents             Meaning                   Value                              Constraints
-  ==================== ========================= ================================== ====================
-  *email*              primary e-mail address    string matching :obj:`.RX_EMAIL`   required, unique
-  *forename*           first name                string matching :obj:`.RX_NAME`    required
-  *surname*            family name               string matching :obj:`.RX_NAME`    required
-  *dn*                 grid certificate subject  string matching :obj:`.RX_DN`      optional
-  *username*           account name              string matching :obj:`.RX_USER`    optional, unique
-  *phone1*             primary phone number      string matching :obj:`.RX_PHONE`   optional
-  *phone2*             secondary phone number    string matching :obj:`.RX_PHONE`   optional
-  *im_handle*          instant messaging handle  string matching :obj:`.RX_IM`      optional
-  ==================== ========================= ================================== ====================
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *email*              primary e-mail address    string matching :obj:`.RX_EMAIL`     required, unique
+  *forename*           first name                string matching :obj:`.RX_NAME`      required
+  *surname*            family name               string matching :obj:`.RX_NAME`      required
+  *dn*                 grid certificate subject  string matching :obj:`.RX_DN`        optional
+  *username*           account name              string matching :obj:`.RX_USER`      optional, unique
+  *phone1*             primary phone number      string matching :obj:`.RX_PHONE`     optional
+  *phone2*             secondary phone number    string matching :obj:`.RX_PHONE`     optional
+  *im_handle*          instant messaging handle  string matching :obj:`.RX_IM`        optional
+  ==================== ========================= ==================================== ====================
 
   The *username* must be either a CERN account, or a CMS HyperNews external
   account."""
@@ -51,9 +51,9 @@ class People(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve people.
+    """Retrieve people. The results aren't ordered in any particular way.
 
-    :arg string match: optional regular expression to filter by *email*
+    :arg str match: optional regular expression to filter by *email*
     :returns: sequence of rows of people; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), """

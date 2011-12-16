@@ -7,18 +7,124 @@ from operator import itemgetter
 from os.path import join as joinpath
 import os, string, random
 
-# Utility to generate new passwords for roles.
 def mkpasswd():
+  """Utility to generate new passwords for roles."""
   passchars = string.letters + string.digits
   return ''.join(random.choice(passchars) for _ in xrange(10))
 
 class Schema(RESTEntity):
+  """REST entity which represents the SiteDB schema in the database, both
+  the schema currently in the selected database instance, and the reference
+  schema in ``$PWD/src/sql/sitedb.sql``.
+
+  In a database, a schema usually corresponds to a *master account* possibly
+  but not necessarily associated with related *reader and writer* accounts.
+  Production databases have all three accounts, private development ones may
+  have all three but often just the master account. The master account owns
+  the schema and the data; it is not used for web services outside the admin
+  operations. If present, the reader account can read but not modify the data
+  nor the schema, and the writer account can update data but not the schema.
+
+  All admin operations on the schema are performed on the master account. If
+  the class detects the auxiliary accounts are present, it adjusts the schema
+  commands suitably. When present the auxiliary accounts are granted suitable
+  read and update privileges against the master schema. There are no admin
+  commands to run against the reader or writer accounts: they are only used
+  for authentication alias to the master schema, there are no schema objects
+  such as synonyms under the auxiliary accounts. :class:`~.DBConnectionPool`
+  will explicitly set the *current schema* attribute on connections to the
+  master. This avoids having to prefix object names in SQL statements, and
+  on the other hand avoids maintaining synonyms under auxiliary accounts.
+
+  In each master instance there can be two schemas live at any one time: the
+  *current* and *archive* schemas. Normally only the current one exists. When
+  a migration requires major surgery on the schema, not implementable with
+  online incremental changes, the current schema is moved entirely out of the
+  way, i.e. archived, and a new current schema is created in place. During
+  this operation all the names of all the database objects are changed so as
+  not to collide with any new schema to be loaded. Once the new schema has
+  been loaded, the archived contents are copied to the new schema, and the
+  new schema and contents are validated and the archive schema and data are
+  backed up then removed. For each release requiring schema migration this
+  class is modified to apply the necessary operations automatically, possibly
+  assisted with additional SQL command files under ``src/sql``.
+
+  A HTTP GET will retrieve canonical version of the schema currently in the
+  database, to the extent that is possible (read: everything except role
+  passwords will be blinded out).
+
+  A HTTP PUT will insert a new schema into the database. The target database
+  must not have any current schema in it; any existing schema must first be
+  eliminated with POST (= archived) or DELETE (= removed).
+
+  A HTTP POST will archive current schema or restore an archived schema.
+
+  A HTTP DELETE will remove an archived or current schema, or both.
+
+  This REST entity is only used as an embedded internal web service within
+  admin operation commands (cf. :command:`sitedb-admin`). It's obviously
+  not included in the normal running web server.
+
+  This class expects to find in ``$PWD/src/sql/sitedb.sql`` the current
+  reference schema. The file is parsed into individual schema statements at
+  construction time. The file may contain "``-- comments``" and individual
+  schema statements separated with semi-colons. The statements are executed
+  in the order they appear in the file when creating a new schema.
+
+  .. warning::
+
+     The current SiteDB schema lacks many features one would normally expect,
+     for example it's very loose on constraints. While you can use this class
+     as an example, do **not** use the actual SiteDB schema as an example.
+
+  .. note::
+
+     Normally when testing a new schema, one should dump the current schema
+     from a production database and the test schema from test database using
+     the GET operation, and compare the results, in addition to comparing SQL
+     files. This avoids nasty surprises in case of rogue database maintenance,
+     and in case some particular aspects has been forgotten.
+
+  .. note::
+
+     Specifying schema explicitly on connect also seems to avoid certain past
+     bugs with server side cursor sharing when multiple instances of the same
+     schema exist within the same database, and cursors accidentally get
+     shared among them, and a client supposedly running against one instance
+     accidentally updates contents some other (wrong) instance. While the bugs
+     have reportedly been fixed, they've resurfaced several times. Apparently
+     explicitly specifying schema helps stay clear of them.
+
+  .. note::
+
+     This class does also support using *roles* for finer grained access
+     privileges, although they are not currently used with SiteDB. If roles
+     were enabled, the writer account alone would be granted no or limited
+     update privileges and clients would enable separate roles to gain actual
+     write access to specific parts of the database. This allows different
+     clients to share the same database account but be given varying degree
+     of privileges to the tables. The longer-term plan is to use this feature
+     to grant the web site write access only to parts of the database, and the
+     hypernews synchronisation restricted access to only the tables it needs.
+
+  .. note::
+
+     The "legacy" SiteDB accounts have not been set up using this tool, and
+     do not fully conform to the above description. No schema SQL file has
+     survived for the schema present in the database; the one in ``src/sql``
+     was reverse engineered from database dumps. There are currently synonyms
+     under auxiliary accounts; they are unused by this server since it sets
+     current schema on connect. The tables haven't been uniformly given the
+     necessary grants, so in practice only the writer account is actually
+     usable. At the time we migrate to SiteDB V2 in production, all these
+     will be corrected by reinitialising the schema using this class.
+  """
+
   def __init__(self, *args):
     RESTEntity.__init__(self, *args)
     self._schemadir = joinpath(os.getcwd(), "src/sql")
     self._schema = open(joinpath(self._schemadir, "sitedb.sql")).read()
 
-  """REST entity object for database schema."""
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
     if method == 'POST':
@@ -31,7 +137,27 @@ class Schema(RESTEntity):
   @restcall
   @tools.expires(secs=3600)
   def get(self):
-    """Retrieve schema description."""
+    """Retrieve a canonical schema description from the database.
+
+    The dump produced is guaranteed to be deterministic but note that it will
+    not look like the reference ``$PWD/src/sql/sitedb.sql`` schema. In order
+    to compare schema in different databases with the reference, first load
+    the reference into another database, dump the schema for all, and compare
+    the outputs with ``diff``.
+
+    The output is structured so that it should be possible to load it directly
+    into a database as a schema script. For example the output includes all
+    tables first followed by foreign keys such that when one table references
+    another both have already been mentioned in the output. The tables are
+    *not* output in the order they appear in the reference, typically output
+    order is alphabetical per object category.
+
+    If the database contains roles associated with this schema, the passwords
+    will be blinded out as ``FAKE_randomstring_FAKE``. If you use this dump for
+    backup, on restore you need to change the passwords back to originals. DBA
+    privileges would be required to recover the original (hashed) passwords.
+
+    :return: Sequence of strings representing the entire schema."""
     rows = []
     statements = [
       # Configure DBMS_METADATA. BEGIN ... END avoids PL/SQL procedure bind.

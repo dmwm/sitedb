@@ -31,12 +31,7 @@ import optparse
 
 
 # automodule options
-OPTIONS = ['members',
-           'undoc-members',
-           # 'inherited-members', # disabled because there's a bug in sphinx
-           'show-inheritance',
-          ]
-
+OPTIONS = ['members']
 INIT = '__init__.py'
 
 def makename(package, module):

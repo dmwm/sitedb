@@ -13,7 +13,7 @@ def fake_authz_headers(hmac_key, method = 'HNLogin',
 
   :arg str hmac_key: binary key data for signing headers.
   :arg str method: authentication method, one of X509Cert, X509Proxy,
-                   HNLogin, HostIP, AUCookie or None.
+    HNLogin, HostIP, AUCookie or None.
   :arg str login: account login name.
   :arg str name: account user name.
   :arg str dn: account X509 subject.
@@ -51,8 +51,9 @@ def fake_authz_headers(hmac_key, method = 'HNLogin',
 
 def fake_authz_key_file():
   """Create temporary file for fake authorisation hmac signing key.
-  :returns: Instance of `~.NamedTemporaryFile`, whose *data* attribute
-            contains the HMAC signing binary key."""
+
+  :returns: Instance of :class:`~.NamedTemporaryFile`, whose *data*
+    attribute contains the HMAC signing binary key."""
   t = NamedTemporaryFile()
   t.data = open("/dev/urandom").read(20)
   t.write(t.data)
@@ -60,9 +61,10 @@ def fake_authz_key_file():
   return t
 
 def setup_test_server(module_name, class_name, app_name = None):
-  """Helper function to set up a :obj:`.RESTMain` server from given
+  """Helper function to set up a :class:`~.RESTMain` server from given
   module and class. Creates a fake server configuration and instantiates
   the server application from it.
+
   :arg str module_name: module from which to import test class.
   :arg str class_type: name of the server test class.
   :arg str app_name: optional test application name, 'test' by default.

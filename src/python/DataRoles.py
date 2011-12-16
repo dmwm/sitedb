@@ -8,11 +8,11 @@ from operator import itemgetter
 class Roles(RESTEntity):
   """REST entity object for role names.
 
-  ==================== ========================= ================================== ====================
-  Contents             Meaning                   Value                              Constraints
-  ==================== ========================= ================================== ====================
-  *title*              role title                string matching :obj:`.RX_LABEL`   required, unique
-  ==================== ========================= ================================== ====================
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *title*              role title                string matching :obj:`.RX_LABEL`     required, unique
+  ==================== ========================= ==================================== ====================
   """
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
@@ -26,9 +26,9 @@ class Roles(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve roles.
+    """Retrieve roles. The results aren't ordered in any particular way.
 
-    :arg string match: optional regular expression to filter by *title*
+    :arg str match: optional regular expression to filter by *title*
     :returns: sequence of rows of role names; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), "select title from role")

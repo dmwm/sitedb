@@ -6,8 +6,28 @@ from SiteDB.Regexps import *
 from operator import itemgetter
 from cherrypy import request
 
+######################################################################
+######################################################################
 class Sites(RESTEntity):
+  """REST entity object for sites.
+
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *tier_level*         tier level                integer >= 0                         required
+  *tier*               tier label                string matching :obj:`.RX_TIER`      required
+  *country*            country                   string matching :obj:`.RX_COUNTRY`   required
+  *usage*              grid flavour              string matching :obj:`.RX_USAGE`     required
+  *url*                site web page             string matching :obj:`.RX_URL`       required
+  *logourl*            logo image location       string matching :obj:`.RX_URL`       required
+  *gocdbid*            id in goc database        bare integer                         required
+  *devel_release*      (unknown)                 string matching :obj:`.RX_YES_NO`    required
+  *manual_install*     (unknown)                 string matching :obj:`.RX_YES_NO`    required
+  ==================== ========================= ==================================== ====================
+  """
   def validate(self, apiobj, method, api, param, safe):
+    """Validate request input data."""
     if method in ('GET', 'HEAD'):
       validate_rx('match', param, safe, optional = True)
 
@@ -36,6 +56,11 @@ class Sites(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
+    """Retrieve sites. The results aren't ordered in any particular way.
+
+    :arg str match: optional regular expression to filter by *name*
+    :returns: sequence of rows of sites; field order in the returned
+              *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
       select s.name, t.pos tier_level, t.name tier, s.country, s.usage,
              s.url, s.logourl, sam.gocdbid, s.getdevlrelease, s.manualinstall
@@ -49,6 +74,23 @@ class Sites(RESTEntity):
   @restcall
   def post(self, site, tier, country, usage, url, logourl,
            gocdbid, devel_release, manual_install):
+    """Update the information for sites identified by `site`. A site admin
+    can update their own site's record, global admins the info for all the
+    sites. When more than one argument is given, there must be equal number
+    of arguments for all the parameters.  It is an error to attempt to
+    update a non-existent `site`.
+
+    :arg list site: site names to insert;
+    :arg list tier: new values;
+    :arg list country: new values;
+    :arg list usage: new values;
+    :arg list url: new values;
+    :arg list logourl: new values;
+    :arg list gocdbid: new values;
+    :arg list devel_release: new values;
+    :arg list manual_install: new values;
+    :returns: a list with a dict in which *modified* gives number of objects
+              ipdated in the database, which is always *len(site).*"""
     # FIXME: gocdbid - use view to update site?
     return self.api.modify("""
       update site set
@@ -68,6 +110,23 @@ class Sites(RESTEntity):
   @restcall
   def put(self, site, tier, country, usage, url, logourl,
           gocdbid, devel_release, manual_install):
+    """Insert new sites. The caller needs to have global admin privileges.
+    When more than one argument is given, there must equal number of
+    arguments for all the parameters. For input validation requirements,
+    see the field descriptions above.  It is an error to attempt to insert
+    a `site` which already exists.
+
+    :arg list site: site names to insert;
+    :arg list tier: new values;
+    :arg list country: new values;
+    :arg list usage: new values;
+    :arg list url: new values;
+    :arg list logourl: new values;
+    :arg list gocdbid: new values;
+    :arg list devel_release: new values;
+    :arg list manual_install: new values;
+    :returns: a list with a dict in which *modified* gives number of objects
+              inserted into the database, which is always *len(site).*"""
     return self.api.modify("""
       insert into site
       (id, name, tier, country, usage, url, logourl, -- gocdbid,
@@ -81,12 +140,33 @@ class Sites(RESTEntity):
 
   @restcall
   def delete(self, site):
+    """Delete site records. Only a global admin can delete site records.
+    For input validation requirements, see the field descriptions above.
+    It is an error to attempt to delete a non-existent `site`.
+
+    :arg list site: names of sites to delete.
+    :returns: a list with a dict in which *modified* gives number of objects
+              deleted from the database, which is always *len(site).*"""
     return self.api.modify("""
       delete from site where name = :site
       """, site = site)
 
+######################################################################
+######################################################################
 class SiteNames(RESTEntity):
+  """REST entity for site name aliases.
+
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *type*               alias type                string matching :obj:`.RX_NAME_TYPE` required, unique
+  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *alias*              name alias                string matching :obj:`.RX_NAME`      required, unique
+  ==================== ========================= ==================================== ====================
+  """
   def validate(self, apiobj, method, api, param, safe):
+    """Validate request input data."""
+
     if method in ('GET', 'HEAD'):
       validate_rx('match', param, safe, optional = True)
 
@@ -102,6 +182,13 @@ class SiteNames(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
+    """Retrieve site name associations. The results aren't ordered in any
+    particular way.
+
+    :arg str match: optional regular expression to filter by *name*
+    :returns: sequence of rows of site names; field order in the returned
+              *desc.columns*."""
+
     return self.api.query(match, itemgetter(1), """
       (select 'lcg' type, s.name site_name, sam.name alias
        from site s
@@ -121,6 +208,18 @@ class SiteNames(RESTEntity):
 
   @restcall
   def put(self, type, site, alias):
+    """Insert new site names. Site admin can update their own site, global
+    admin can update names for all the sites. When more than one argument is
+    given, there must be an equal number of arguments for all the parameters.
+    For input validation requirements, see the field descriptions above.
+    It is an error to attempt to insert an existing name alias triplet.
+
+    :arg list type: new values;
+    :arg list site: new values;
+    :arg list alias: new values;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              inserted into the database, which is always *len(type).*"""
+
     binds = self.api.bindmap(type = type, site = site, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
@@ -166,6 +265,18 @@ class SiteNames(RESTEntity):
 
   @restcall
   def delete(self, type, site, alias):
+    """Delete site name associations. Site admin can update their own site,
+    global admin can update names for all the sites. When more than one
+    argument is given, there must be an equal number of arguments for all
+    the parameters. For input validation requirements, see the field
+    descriptions above. It is an error to attempt to delete a non-existent
+    site name association.
+
+    :arg list type: values to delete;
+    :arg list site: values to delete;
+    :arg list alias: values to delete;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              deleted from the database, which is always *len(type).*"""
     binds = self.api.bindmap(type = type, site = site, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
@@ -211,6 +322,8 @@ class SiteNames(RESTEntity):
     request.dbconn.commit()
     return result
 
+######################################################################
+######################################################################
 # class SiteLinks(RESTEntity):
 #   def validate(self, apiobj, method, api, param, safe):
 #     pass
@@ -224,8 +337,22 @@ class SiteNames(RESTEntity):
 #       join sitelinks l on l.siteid = s.id
 #     """)
 
+######################################################################
+######################################################################
 class SiteResources(RESTEntity):
+  """REST entity for site CE, SE resources.
+
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *type*               resource type             string matching :obj:`.RX_RES_TYPE`  required
+  *fqdn*               fully qualified host name string matching :obj:`.RX_FQDN`      required
+  *is_primary*         this is primary resource  string matching :obj:`.RX_YES_NO`    required
+  ==================== ========================= ==================================== ====================
+  """
   def validate(self, apiobj, method, api, param, safe):
+    """Validate request input data."""
     if method in ('PUT', 'DELETE'):
       validate_strlist('site', param, safe, RX_SITE)
       validate_strlist('type', param, safe, RX_RES_TYPE)
@@ -245,6 +372,11 @@ class SiteResources(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self):
+    """Retrieve site resources. The results aren't ordered in any particular way.
+
+    :returns: sequence of rows of site resources; field order in the returned
+              *desc.columns*."""
+
     return self.api.query(None, None, """
       select s.name, r.type, r.fqdn, r.is_primary
       from site s
@@ -253,6 +385,19 @@ class SiteResources(RESTEntity):
 
   @restcall
   def put(self, site, type, fqdn, is_primary):
+    """Insert new site resources. Site admin can update their own site, global
+    admin can update resources for all the sites. When more than one argument
+    is given, there must be an equal number of arguments for all the parameters.
+    For input validation requirements, see the field descriptions above. It is
+    an error to attemp to insert an existing site resource.
+
+    :arg list site: new values;
+    :arg list type: new values;
+    :arg list fqdn: new values;
+    :arg list is_primary: new values;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              inserted into the database, which is always *len(site).*"""
+
     return self.api.modify("""
       insert into resource_element (id, site, fqdn, type, is_primary)
       select resource_element_sq.nextval, s.id, :fqdn, :type, :is_primary
@@ -261,6 +406,18 @@ class SiteResources(RESTEntity):
 
   @restcall
   def delete(self, site, type, fqdn):
+    """Delete site resource associations. Site admin can update their own site,
+    global admin can update resources for all the sites. When more than one
+    argument is given, there must be an equal number of arguments for all the
+    parameters. For input validation requirements, see the field descriptions
+    above. It is an error to attempt to delete a non-existent site resource.
+
+    :arg list site: values to delete;
+    :arg list type: values to delete;
+    :arg list fqdn: values to delete;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              deleted from the database, which is always *len(site).*"""
+
     return self.api.modify("""
       delete from resource_element
       where site = (select s.id from site s where s.name = :site)
@@ -268,8 +425,21 @@ class SiteResources(RESTEntity):
         and type = :type
       """, site=site, type=type, fqdn=fqdn)
 
+######################################################################
+######################################################################
 class SiteAssociations(RESTEntity):
+  """REST entity for site relationships.
+
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *parent*             parent site name          string matching :obj:`.RX_SITE`      required
+  *child*              child site name           string matching :obj:`.RX_SITE`      required
+  ==================== ========================= ==================================== ====================
+  """
   def validate(self, apiobj, method, api, param, safe):
+    """Validate request input data."""
+
     if method in ('PUT', 'DELETE'):
       validate_strlist('parent', param, safe, RX_SITE)
       validate_strlist('child',  param, safe, RX_SITE)
@@ -281,6 +451,12 @@ class SiteAssociations(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self):
+    """Retrieve site parent-child associations. The results aren't ordered
+    in any particular way.
+
+    :returns: sequence of rows of associations; field order in the returned
+              *desc.columns*."""
+
     return self.api.query(None, None, """
       select p.name parent_site, c.name child_site
       from site_association sa
@@ -290,6 +466,18 @@ class SiteAssociations(RESTEntity):
 
   @restcall
   def put(self, parent, child):
+    """Insert new site associations. Parent site admin can update their own
+    site, global admin can update associations for all the sites. When more
+    than one argument is given, there must be an equal number of arguments
+    for all the parameters. For input validation requirements, see the field
+    descriptions above. It is an error to attempt to insert an existing site
+    association pair.
+
+    :arg list parent: new values;
+    :arg list child: new values;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              inserted into the database, which is always *len(parent).*"""
+
     return self.api.modify("""
       insert into site_association (parent_site, child_site)
       values ((select id from site where name = :parent),
@@ -298,6 +486,17 @@ class SiteAssociations(RESTEntity):
 
   @restcall
   def delete(self, parent, child):
+    """Delete site associations. Parent site admin can update their own site,
+    global admin can update associations for all the sites. When more than one
+    argument is given, there must be an equal number of arguments for all the
+    parameters. For input validation requirements, see the field descriptions
+    above. It is an error to attempt to delete a non-existent association.
+
+    :arg list parent: values to delete;
+    :arg list child: values to delete;
+    :returns: a list with a dict in which *modified* gives the number of objects
+              deleted from the database, which is always *len(parent).*"""
+
     return self.api.modify("""
       delete from site_association
       where parent_site = (select id from site where name = :parent)

@@ -1,6 +1,58 @@
 import random, cherrypy
 
 class RESTError(Exception):
+  """Base class for REST errors.
+
+  .. attribute:: http_code
+
+     Integer, HTTP status code for this error. Also emitted as X-Error-HTTP
+     header value.
+
+  .. attribute:: app_code
+
+     Integer, application error code, to be emitted as X-REST-Status header.
+
+  .. attribute:: message
+
+     String, information about the error, to be emitted as X-Error-Detail
+     header. Should not contain anything sensitive, and in particular should
+     never include any unvalidated or unsafe data, e.g. input parameters or
+     data from a database. Normally a fixed label with one-to-one match with
+     the :obj:`app-code`. If the text exceeds 200 characters, it's truncated.
+     Since this is emitted as a HTTP header, it cannot contain newlines or
+     anything encoding-dependent.
+
+  .. attribute:: info
+
+     String, additional information beyond :obj:`message`, to be emitted as
+     X-Error-Info header. Like :obj:`message` should not contain anything
+     sensitive or unsafe, or text inappropriate for a HTTP response header,
+     and should be short enough to fit in 200 characters. This is normally
+     free form text to clarify why the error happened.
+
+  .. attribute:: errid
+
+     String, random unique identifier for this error, to be emitted as
+     X-Error-ID header and output into server logs when logging the error.
+     The purpose is that clients save this id when they receive an error,
+     and further error reporting or debugging can use this value to identify
+     the specific error, and for example to grep logs for more information.
+
+  .. attribute:: errobj
+
+     If the problem was caused by another exception being raised in the code,
+     reference to the original exception object. For example if the code dies
+     with an :class:`KeyError`, this is the original exception object. This
+     error is logged to the server logs when reporting the error, but no
+     information about it is returned to the HTTP client.
+
+  .. attribute:: trace
+
+     The origin of the exception as returned by :func:`format_exc`. The full
+     trace is emitted to the server logs, each line prefixed with timestamp.
+     This information is not returned to the HTTP client.
+  """
+
   http_code = None
   app_code = None
   message = None
@@ -41,7 +93,8 @@ class MethodWithoutQueryString(RESTError):
   message = "Query arguments not supported for this request method"
 
 class APIMethodMismatch(RESTError):
-  "Both the API and HTTP request methods are supported, but not in that combination."
+  """Both the API and HTTP request methods are supported, but not in that
+  combination."""
   http_code = 405
   app_code = 204
   message = "API not supported for this request method"
@@ -53,16 +106,34 @@ class APINotSpecified(RESTError):
   message = "API not specified"
 
 class NoSuchInstance(RESTError):
-  "The request URL is missing instance argument or the specified instance does not exist."
+  """The request URL is missing instance argument or the specified instance
+  does not exist."""
   http_code = 404
   app_code = 206
   message = "No such instance"
 
 class DatabaseError(RESTError):
-  """Parent class for database-related errors."""
+  """Parent class for database-related errors.
+
+  .. attribute: lastsql
+
+     A tuple of *(sql, binds, kwbinds),* where `sql` is the last SQL statement
+     executed and `binds`, `kwbinds` are the bind values used with it. Any
+     sensitive parts like passwords have already been censored from the `sql`
+     string. Note that for massive requests `binds` or `kwbinds` can get large.
+     These are logged out in the server logs when reporting the error, but no
+     information about these are returned to the HTTP client.
+
+  .. attribute: intance
+
+     String, the database instance for which the error occurred. This is
+     reported in the error message output to server logs, but no information
+     about this is returned to the HTTP client."""
+
   lastsql = None
   instance = None
-  def __init__(self, info = None, errobj = None, trace = None, lastsql = None, instance = None):
+  def __init__(self, info = None, errobj = None, trace = None,
+               lastsql = None, instance = None):
     RESTError.__init__(self, info, errobj, trace)
     self.lastsql = lastsql
     self.instance = instance
@@ -70,8 +141,8 @@ class DatabaseError(RESTError):
 class DatabaseUnavailable(DatabaseError):
   """The instance argument is correct, but cannot connect to the database.
   This error will only occur at initial attempt to connect to the database,
-  DatabaseConnectionError is raised instead if the connection ends prematurely
-  after the transaction has already begun successfully."""
+  :class:`~.DatabaseConnectionError` is raised instead if the connection
+  ends prematurely after the transaction has already begun successfully."""
   http_code = 503
   app_code = 401
   message = "Database unavailable"
@@ -154,7 +225,7 @@ def report_error_header(header, val):
 
 def report_rest_error(err, trace, throw):
   """Report a REST error: generate an appropriate log message, set the
-  response headers and raise an appropriate HTTPError().
+  response headers and raise an appropriate :class:`~.HTTPError`.
 
   Normally `throw` would be True to translate the exception `err` into
   a HTTP server error, but the function can also be called with `throw`
@@ -162,7 +233,7 @@ def report_rest_error(err, trace, throw):
 
   :arg err: exception object.
   :arg trace: stack trace to use in case `err` doesn't have one.
-  :arg throw: raise a HTTPError() if True."""
+  :arg throw: raise a :class:`~.HTTPError` if True."""
   if isinstance(err, DatabaseError) and err.errobj:
     offset = None
     sql, binds, kwbinds = err.lastsql

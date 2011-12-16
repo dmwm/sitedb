@@ -23,6 +23,9 @@ pygments_style = 'sphinx'
 #modindex_common_prefix = []
 
 autoclass_content = 'both'
+autodoc_member_order = 'bysource'
+autodoc_default_flags = ['members', 'undoc-members', 'private-members',
+                         'special-members', 'show-inheritance']
 
 html_theme = 'nature'
 #html_theme_options = {}
@@ -60,3 +63,30 @@ latex_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+# Check if a type is from SiteDB:
+# - Free functions from SiteDB.*
+# - Methods from SiteDB.*
+# - Classes from SiteDB.*
+def is_sitedb_type(obj):
+  if getattr(obj, "__module__", None):
+    return obj.__module__.startswith("SiteDB.")
+  elif getattr(obj, "im_class", None):
+    return obj.im_class.__module__.startswith("SiteDB.")
+  elif getattr(obj, "__class__", None):
+    return obj.__class__.__module__.startswith("SiteDB.")
+  return False
+
+# Custom autodoc skip predicate: keep documented 'private' functions and methods.
+def keep_documented_private(app, what, name, obj, skip, options):
+  if not skip:
+    return False
+  if name.startswith("_") and \
+     not name.startswith("__") \
+     and getattr(obj, "__doc__", None) \
+     and is_sitedb_type(obj):
+    return False
+  return True
+
+def setup(app):
+  app.connect('autodoc-skip-member', keep_documented_private)

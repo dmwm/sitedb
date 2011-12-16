@@ -8,11 +8,11 @@ from operator import itemgetter
 class Groups(RESTEntity):
   """REST entity object for group names.
 
-  ==================== ========================= ================================== ====================
-  Contents             Meaning                   Value                              Constraints
-  ==================== ========================= ================================== ====================
-  *name*               group name                string matching :obj:`.RX_LABEL`   required, unique
-  ==================== ========================= ================================== ====================
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *name*               group name                string matching :obj:`.RX_LABEL`     required, unique
+  ==================== ========================= ==================================== ====================
   """
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
@@ -26,9 +26,9 @@ class Groups(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve user groups.
+    """Retrieve user groups. The results aren't ordered in any particular way.
 
-    :arg string match: optional regular expression to filter by *name*
+    :arg str match: optional regular expression to filter by *name*
     :returns: sequence of rows of user group names; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), "select name from user_group")

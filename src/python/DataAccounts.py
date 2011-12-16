@@ -8,12 +8,12 @@ from operator import itemgetter
 class Accounts(RESTEntity):
   """REST entity object for user accounts.
 
-  ==================== ========================= ================================== ====================
-  Contents             Meaning                   Value                              Constraints
-  ==================== ========================= ================================== ====================
-  *username*           user account name         string matching :obj:`.RX_USER`    required, unique
-  *passwd*             encrypted password        string matching :obj:`.RX_PASSWD`  required
-  ==================== ========================= ================================== ====================
+  ==================== ========================= ==================================== ====================
+  Contents             Meaning                   Value                                Constraints
+  ==================== ========================= ==================================== ====================
+  *username*           user account name         string matching :obj:`.RX_USER`      required, unique
+  *passwd*             encrypted password        string matching :obj:`.RX_PASSWD`    required
+  ==================== ========================= ==================================== ====================
   """
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
@@ -33,9 +33,9 @@ class Accounts(RESTEntity):
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
-    """Retrieve accounts.
+    """Retrieve accounts. The results aren't ordered in any particular way.
 
-    :arg string match: optional regular expression to filter by *username*
+    :arg str match: optional regular expression to filter by *username*
     :returns: sequence of rows of accounts; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0),

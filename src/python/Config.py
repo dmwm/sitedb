@@ -4,11 +4,9 @@ class Config(Configuration):
   """Default SiteDB server configuration."""
   def __init__(self, db = None, authkey = None, nthreads = 5, port = 8051):
     """
-    :arg tuple db: Specifies how to invoke database initialisation routine at
-      the server start-up. The tuple ``(module, function, args...)`` requests
-      to invoke *function* from *module* and with *args*. Defaults to
-      ``('SiteDBAuth', 'dbparam', nthreads)``.
-    :arg string authkey: Location of wmcore security header authentication key.
+    :arg str db: Location of database configuration, "module.object". Defaults
+      to "SiteDBAuth.dbparam".
+    :arg str authkey: Location of wmcore security header authentication key.
     :arg integer nthreads: Number of server threads to create.
     :arg integer port: Server port."""
 

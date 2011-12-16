@@ -9,9 +9,9 @@ class FrontPage(RESTFrontPage):
   code embedded into it. The only additional callouts needed are the
   image resources needed for YUI and other site graphics.
 
-  The javascript code performs all the app functionality via the REST
-  interface defined by `Data` class. Mostly it just does bulk load of
-  the various details, and organises it into a nice user interface,
+  The JavaScript code performs all the app functionality via the REST
+  interface defined by the :class:`~.Data` class. Mostly it just does bulk
+  load of the various details, and organises it into a nice user interface,
   and where necessary and appropriate, offers an interface to edit the
   information. Virtually all interactive functionality is done on the
   client side, including things like searching.
@@ -20,7 +20,10 @@ class FrontPage(RESTFrontPage):
   <https://cmsweb.cern.ch/sitedb/prod/sites/T1_CH_CERN>."""
 
   def __init__(self, app, config, mount):
-    """Initialise the main server."""
+    """
+    :arg app: reference to the application object.
+    :arg config: reference to the configuration.
+    :arg str mount: URL mount point."""
     CONTENT = os.path.abspath(__file__).rsplit('/', 5)[0]
     X = (__file__.find("/xlib/") >= 0 and "x") or ""
     roots = \

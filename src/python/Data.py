@@ -14,7 +14,8 @@ class Data(DatabaseRESTApi):
   def __init__(self, app, config, mount):
     """
     :arg app: reference to application object; passed to all entities.
-    :arg config: reference to configuration; passed to all entities."""
+    :arg config: reference to configuration; passed to all entities.
+    :arg str mount: API URL mount point; passed to all entities."""
     DatabaseRESTApi.__init__(self, app, config, mount)
     self._add({ "whoami":                 WhoAmI(app, self, config, mount),
                 "roles":                  Roles(app, self, config, mount),
