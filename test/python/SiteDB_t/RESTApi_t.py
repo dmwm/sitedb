@@ -1,12 +1,12 @@
 from cherrypy.test import test, webtest, helper
+from cherrypy import expose, response, config as cpconfig
 from SiteDB.RESTServer import RESTApi, RESTEntity, restcall, rows
 from SiteDB.RESTTest import setup_test_server, fake_authz_headers
-from SiteDB.RESTValidation import validate_num
+from SiteDB.RESTValidation import validate_num, validate_str
 from SiteDB.RESTError import InvalidObject
 from SiteDB.RESTFormat import RawFormat
 from SiteDB.RESTTools import tools
-from cherrypy import expose
-import cjson
+import cjson, re
 
 server = None
 authz_key = None
@@ -24,8 +24,8 @@ class Simple(RESTEntity):
 
 class Multi(RESTEntity):
   def validate(self, apiobj, method, api, param, safe):
-    validate_num("lim", param, safe, bare=True,
-		 optional=True, minval=0, maxval=10)
+    validate_str("etag", param, safe, re.compile("^[a-z]*$"), optional=True)
+    validate_num("lim", param, safe, bare=True, optional=True, minval=0, maxval=10)
 
   def _generate(self, lim):
     for i in xrange(0, 10):
@@ -38,7 +38,10 @@ class Multi(RESTEntity):
 
   @restcall
   @tools.expires(secs=300)
-  def get(self, lim):
+  def get(self, lim, etag):
+    if etag:
+      response.headers["ETag"] = '"%s"' % etag
+
     if lim == 0:
       raise InvalidObject("cut at 0")
 
@@ -160,10 +163,10 @@ class Tester(helper.CPWebCase):
     self.assertHeader("X-Error-Detail", "Invalid object")
     self.assertHeader("X-Error-ID")
 
-  def test_multi_throw5(self):
+  def test_multi_throw5a(self):
     h = fake_authz_headers(authz_key.data)
     h.append(("Accept", "application/json"))
-    self.getPage("/test/multi?lim=5", headers = h)
+    self.getPage("/test/multi?lim=5&etag=x", headers = h)
     self.assertStatus("200 OK")
     self.assertHeader("X-REST-Status", "100")
     b = cjson.decode(self.body)
@@ -177,10 +180,21 @@ class Tester(helper.CPWebCase):
       assert b["result"][i][0] == "row"
       assert b["result"][i][1] == i
 
+  def test_multi_throw5b(self):
+    h = fake_authz_headers(authz_key.data)
+    h.append(("Accept", "application/json"))
+    self.getPage("/test/multi?lim=5", headers = h)
+    self.assertStatus(400)
+    self.assertHeader("X-REST-Status", "200")
+    self.assertHeader("X-Error-HTTP", "400")
+    self.assertHeader("X-Error-Info", "cut at 5")
+    self.assertHeader("X-Error-Detail", "Invalid object")
+    self.assertHeader("X-Error-ID")
+
   def test_multi_throw10(self):
     h = fake_authz_headers(authz_key.data)
     h.append(("Accept", "application/json"))
-    self.getPage("/test/multi?lim=10", headers = h)
+    self.getPage("/test/multi?lim=10&etag=x", headers = h)
     self.assertStatus("200 OK")
     self.assertHeader("X-REST-Status", "100")
     b = cjson.decode(self.body)
@@ -198,7 +212,7 @@ def setup_server():
   global server, authz_key
   srcfile = __file__.split("/")[-1].split(".py")[0]
   server, authz_key = setup_test_server(srcfile, "Root")
-  #import cherrypy; cherrypy.config.update({"log.screen": True})
+  #cpconfig.update({"log.screen": True})
 
 if __name__ == '__main__':
   setup_server()

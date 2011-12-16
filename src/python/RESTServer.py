@@ -1,7 +1,7 @@
 import re, signal, cherrypy, traceback, random, xml, cjson, inspect, time, imp
-from cherrypy import expose, request, response, HTTPError
+from cherrypy import expose, request, response, HTTPError, HTTPRedirect
 from cherrypy.lib.cptools import accept
-from rfc822 import formatdate as HTTPDate
+from rfc822 import formatdate as rfc822_date
 from collections import namedtuple
 from traceback import format_exc
 from functools import wraps
@@ -17,13 +17,15 @@ class MiniRESTApi:
   def __init__(self, app, config, mount):
     self.app = app
     self.config = config
+    self.etag_limit = 8 * 1024 * 1024
     self.compression_level = 9
-    self.compression_chunk = 65536
+    self.compression_chunk = 64 * 1024
     self.compression = ['deflate']
     self.formats = [ ('application/json', JSONFormat()),
                      ('application/xml', XMLFormat(self.app.appname)) ]
     self.methods = {}
-    self.default_expire = 3600
+    self.default_expires = 3600
+    self.default_expires_opts = []
 
   ####################################################################
   def _addAPI(self, method, api, callable, args, validation, **kwargs):
@@ -54,6 +56,8 @@ class MiniRESTApi:
   def default(self, *args, **kwargs):
     try:
       return self._call(RESTArgs(list(args), kwargs))
+    except HTTPRedirect:
+      raise
     except Exception, e:
       report_rest_error(e, format_exc(), True)
     finally:
@@ -119,30 +123,33 @@ class MiniRESTApi:
     # Invoke the method.
     obj = apiobj['call'](*safe.args, **safe.kwargs)
 
-    # Format the response. If 'Accept-Encoding' includes 'deflate', use a
-    # chunking-compatible streaming compression filter.
-    response.headers["Content-Type"] = format
-    response.headers["Trailer"] = "ETag X-REST-Status"
-    reply = stream_compress(fmthandler(obj, apiobj.get('etagger', md5etag)),
-			    apiobj.get('compression', self.compression),
-			    apiobj.get('compression_level', self.compression_level),
-			    apiobj.get('compression_chunk', self.compression_chunk))
-
     # Set expires header if applicable. Note that POST/PUT/DELETE are not
-    # cacheable to begin with according to HTTP/1.1 specification.
+    # cacheable to begin with according to HTTP/1.1 specification. We must
+    # do this before actually streaming out the response below in case the
+    # ETag matching decides the previous response remains valid.
     if request.method == 'GET' or request.method == 'HEAD':
-      expires = apiobj.get('expires', self.default_expire)
-      if expires < 0:
+      expires = apiobj.get('expires', self.default_expires)
+      if response.headers.has_key('Cache-Control'):
+        pass
+      elif expires < 0:
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = 'Sun, 19 Nov 1978 05:00:00 GMT'
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate,' \
                                             ' post-check=0, pre-check=0'
       elif expires != None:
-        response.headers['Cache-Control'] = 'max-age=%d' % expires
+        expires_opts = apiobj.get('expires_opts', self.default_expires_opts)
+        expires_opts = (expires_opts and ', '.join([''] + expires_opts)) or ''
+        response.headers['Cache-Control'] = 'max-age=%d%s' % (expires, expires_opts)
 
-    # Indicate success.
-    response.headers["X-REST-Status"] = 100
-    return reply
+    # Format the response.
+    response.headers['X-REST-Status'] = 100
+    response.headers['Content-Type'] = format
+    etagger = apiobj.get('etagger', None) or SHA1ETag()
+    reply = stream_compress(fmthandler(obj, etagger),
+                            apiobj.get('compression', self.compression),
+                            apiobj.get('compression_level', self.compression_level),
+                            apiobj.get('compression_chunk', self.compression_chunk))
+    return stream_maybe_etag(apiobj.get('etag_limit', self.etag_limit), etagger, reply)
 
   def _precall(self, param):
     pass
@@ -265,7 +272,7 @@ class DatabaseRESTApi(RESTApi):
       raise DatabaseUnavailable(errobj = errobj, trace = trace, lastsql = sql)
     elif isinstance(errobj, dbtype.InterfaceError):
       raise DatabaseConnectionError(errobj = errobj, trace = trace, lastsql = sql)
-    elif isinstance(errobj, RESTError):
+    elif isinstance(errobj, (HTTPRedirect, RESTError)):
       raise
     else:
       raise DatabaseExecutionError(errobj = errobj, trace = trace, lastsql = sql)

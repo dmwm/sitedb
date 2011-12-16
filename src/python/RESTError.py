@@ -221,4 +221,5 @@ def report_rest_error(err, trace, throw):
     cherrypy.response.headers["X-REST-Status"] = 400
     cherrypy.response.headers["X-Error-HTTP"] = 500
     cherrypy.response.headers["X-Error-ID"] = errid
+    report_error_header("X-Error-Detail", "Server error")
     if throw: raise cherrypy.HTTPError(500, "Server error")
