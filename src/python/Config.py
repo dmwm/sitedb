@@ -15,7 +15,7 @@ class Config(Configuration):
     Configuration.__init__(self)
     main = self.section_('main')
     srv = main.section_('server')
-    srv.thread_pool_size = nthreads
+    srv.thread_pool = nthreads
     main.application = 'sitedb'
     main.port = port
     main.index = 'ui'
