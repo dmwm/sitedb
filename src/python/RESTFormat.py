@@ -1,6 +1,9 @@
-import re, cherrypy, cjson, types, hashlib, xml.sax.saxutils
+import re, cherrypy, cjson, types, hashlib, xml.sax.saxutils, zlib
 from RESTError import RESTError, ExecutionError, report_rest_error
 from traceback import format_exc
+
+#: Stream compression methods.
+stream_compressor = {}
 
 def md5etag(curtag, val):
   """Compute MD5 hash over contents for ETag header.
@@ -34,6 +37,68 @@ def is_iterable(obj):
     return False
   else:
     return True
+
+def stream_compress_deflate(reply, compress_level, max_chunk):
+  """Streaming compressor for the 'deflate' method. Generates output that
+  is guaranteed to expand at the exact same chunk boundaries as original
+  reply stream."""
+
+  # Create zlib compression object, with raw data stream (negative window size)
+  z = zlib.compressobj(compress_level, zlib.DEFLATED, -zlib.MAX_WBITS,
+                       zlib.DEF_MEM_LEVEL, 0)
+
+  # Data pending compression. We only take entire chunks from original
+  # reply. Then process reply one chunk at a time. Whenever we have enough
+  # data to compress, spit it out flushing the zlib engine entirely, so we
+  # respect original chunk boundaries.
+  npending = 0
+  pending = []
+  for chunk in reply:
+    pending.append(chunk)
+    npending += len(chunk)
+    if npending >= max_chunk:
+      part = z.compress("".join(pending)) + z.flush(zlib.Z_FULL_FLUSH)
+      pending = []
+      npending = 0
+      yield part
+
+  # Crank the compressor one more time for remaining output.
+  if npending:
+    yield z.compress("".join(pending)) + z.flush(zlib.Z_FINISH)
+
+stream_compressor['deflate'] = stream_compress_deflate
+
+def stream_compress(reply, available, compress_level, max_chunk):
+  """If compression has been requested via Accept-Encoding request header,
+  and is granted for this response via `available` compression methods,
+  convert the streaming `reply` into another streaming response which is
+  compressed at the exact chunk boundaries of the original response,
+  except that individual chunks may be coalesced up to `max_chunk` size.
+  The `compression_level` tells how hard to compress."""
+
+  global stream_compressor
+  for enc in cherrypy.request.headers.elements('Accept-Encoding'):
+    if enc.value not in available:
+      continue
+
+    elif enc.value == 'identity' and enc.qvalue != 0:
+      break
+
+    elif enc.value in stream_compressor:
+      # Add 'Vary' header for 'Accept-Encoding'.
+      varies = cherrypy.response.headers.get('Vary', '')
+      varies = [x.strip() for x in varies.split(",") if x.strip()]
+      if 'Accept-Encoding' not in varies:
+        varies.append('Accept-Encoding')
+      cherrypy.response.headers['Vary'] = ", ".join(varies)
+
+      # Compress contents at original chunk boundaries.
+      if cherrypy.response.headers.has_key('Content-Length'):
+        del cherrypy.response.headers['Content-Length']
+      cherrypy.response.headers['Content-Encoding'] = enc.value
+      return stream_compressor[enc.value](reply, compress_level, max_chunk)
+
+  return reply
 
 class XMLFormat:
   """Format an iterable of objects into XML encoded in UTF-8.

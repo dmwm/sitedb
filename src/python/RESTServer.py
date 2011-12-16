@@ -17,6 +17,9 @@ class MiniRESTApi:
   def __init__(self, app, config, mount):
     self.app = app
     self.config = config
+    self.compression_level = 9
+    self.compression_chunk = 65536
+    self.compression = ['deflate']
     self.formats = [ ('application/json', JSONFormat()),
                      ('application/xml', XMLFormat(self.app.appname)) ]
     self.methods = {}
@@ -116,10 +119,14 @@ class MiniRESTApi:
     # Invoke the method.
     obj = apiobj['call'](*safe.args, **safe.kwargs)
 
-    # Format the response.
+    # Format the response. If 'Accept-Encoding' includes 'deflate', use a
+    # chunking-compatible streaming compression filter.
     response.headers["Content-Type"] = format
     response.headers["Trailer"] = "ETag X-REST-Status"
-    reply = fmthandler(obj, apiobj.get('etagger', md5etag))
+    reply = stream_compress(fmthandler(obj, apiobj.get('etagger', md5etag)),
+			    apiobj.get('compression', self.compression),
+			    apiobj.get('compression_level', self.compression_level),
+			    apiobj.get('compression_chunk', self.compression_chunk))
 
     # Set expires header if applicable. Note that POST/PUT/DELETE are not
     # cacheable to begin with according to HTTP/1.1 specification.
@@ -131,7 +138,7 @@ class MiniRESTApi:
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate,' \
                                             ' post-check=0, pre-check=0'
       elif expires != None:
-        response.headers['Expires'] = HTTPDate(time.time() + expires)
+        response.headers['Cache-Control'] = 'max-age=%d' % expires
 
     # Indicate success.
     response.headers["X-REST-Status"] = 100
