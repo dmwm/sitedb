@@ -131,7 +131,11 @@ class MiniRESTApi:
     # do this before actually streaming out the response below in case the
     # ETag matching decides the previous response remains valid.
     if request.method == 'GET' or request.method == 'HEAD':
-      expires = apiobj.get('expires', self.default_expires)
+      expires = self.default_expires
+      cpcfg = getattr(apiobj['call'], '_cp_config', None)
+      if cpcfg and 'tools.expires.on' in cpcfg:
+        expires = cpcfg.get('tools.expires.secs', expires)
+      expires = apiobj.get('expires', expires)
       if response.headers.has_key('Cache-Control'):
         pass
       elif expires < 0:
