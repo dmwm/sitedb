@@ -61,9 +61,11 @@ class NoSuchInstance(RESTError):
 class DatabaseError(RESTError):
   """Parent class for database-related errors."""
   lastsql = None
-  def __init__(self, info = None, errobj = None, trace = None, lastsql = None):
+  instance = None
+  def __init__(self, info = None, errobj = None, trace = None, lastsql = None, instance = None):
     RESTError.__init__(self, info, errobj, trace)
     self.lastsql = lastsql
+    self.instance = instance
 
 class DatabaseUnavailable(DatabaseError):
   """The instance argument is correct, but cannot connect to the database.
@@ -167,12 +169,12 @@ def report_rest_error(err, trace, throw):
     if sql and err.errobj.args and hasattr(err.errobj.args[0], 'offset'):
       offset = err.errobj.args[0].offset
       sql = sql[:offset] + "<**>" + sql[offset:]
-    cherrypy.log("SERVER DATABASE ERROR %s.%s %s (%s); last statement:"
-                 " %s; binds: %s, %s; offset: %s"
+    cherrypy.log("SERVER DATABASE ERROR %s.%s %s [instance: %s] (%s);"
+                 " last statement: %s; binds: %s, %s; offset: %s"
                  % (getattr(err.errobj, "__module__", "__builtins__"),
                     err.errobj.__class__.__name__,
-                    err.errid, str(err.errobj).rstrip(), sql, binds, kwbinds,
-                    offset))
+                    err.errid, err.instance, str(err.errobj).rstrip(),
+                    sql, binds, kwbinds, offset))
     for line in err.trace.rstrip().split("\n"): cherrypy.log("  " + line)
     cherrypy.response.headers["X-REST-Status"] = str(err.app_code)
     cherrypy.response.headers["X-Error-HTTP"] = str(err.http_code)

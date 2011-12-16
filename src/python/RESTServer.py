@@ -255,30 +255,33 @@ class DatabaseRESTApi(RESTApi):
     request.dbpool = None
 
     # Raise an error of appropriate type.
+    errinfo = { "errobj": errobj, "trace": trace }
+    dberrinfo = { "errobj": errobj, "trace": trace, "lastsql": sql,
+                  "instance": getattr(request, "dbinst", None) }
     if inconnect:
-      raise DatabaseUnavailable(errobj = errobj, trace = trace, lastsql = sql)
+      raise DatabaseUnavailable(**dberrinfo)
     elif isinstance(errobj, dbtype.IntegrityError):
       if errobj.args[0].code in (1, 2292):
         # ORA-00001: unique constraint (x) violated
         # ORA-02292: integrity constraint (x) violated - child record found
-        raise ObjectAlreadyExists(errobj = errobj, trace = trace)
+        raise ObjectAlreadyExists(**errinfo)
       elif errobj.args[0].code in (1400, 2290):
         # ORA-01400: cannot insert null into (x)
         # ORA-02290: check constraint (x) violated
-        raise InvalidParameter(errobj = errobj, trace = trace)
+        raise InvalidParameter(**errinfo)
       elif errobj.args[0].code == 2291:
         # ORA-02291: integrity constraint (x) violated - parent key not found
-        raise MissingObject(errobj = errobj, trace = trace)
+        raise MissingObject(**errinfo)
       else:
-        raise DatabaseExecutionError(errobj = errobj, trace = trace, lastsql = sql)
+        raise DatabaseExecutionError(**dberrinfo)
     elif isinstance(errobj, dbtype.OperationalError):
-      raise DatabaseUnavailable(errobj = errobj, trace = trace, lastsql = sql)
+      raise DatabaseUnavailable(**dberrinfo)
     elif isinstance(errobj, dbtype.InterfaceError):
-      raise DatabaseConnectionError(errobj = errobj, trace = trace, lastsql = sql)
+      raise DatabaseConnectionError(**dberrinfo)
     elif isinstance(errobj, (HTTPRedirect, RESTError)):
       raise
     else:
-      raise DatabaseExecutionError(errobj = errobj, trace = trace, lastsql = sql)
+      raise DatabaseExecutionError(**dberrinfo)
 
   def _precall(self, param):
     # Check we were given an instance argument and it's known.
