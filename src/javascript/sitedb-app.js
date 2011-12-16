@@ -350,7 +350,7 @@ var SiteDB = function(Y, views, debug)
   };
 
   if (! debug)
-    window.onerror = ui.pageErrorHandler;
+    window.onerror = _gui.pageErrorHandler;
 
   // Add views.
   for (var view = 0; view < views.length; ++view)

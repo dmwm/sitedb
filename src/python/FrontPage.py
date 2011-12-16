@@ -1,6 +1,6 @@
 from cherrypy import expose, HTTPError, request, response, tools
 from cherrypy.lib import cptools, http
-import os, re, jsmin, hashlib, cjson
+import os, re, hashlib, cjson
 
 class FrontPage:
   """SiteDB front page.
@@ -47,6 +47,13 @@ class FrontPage:
       }
     }
 
+    self._debug = True
+    self._frontpage = "sitedb/templates/sitedb.html"
+    if os.path.exists("%s/templates/sitedb-min.html"
+                      % self._static["sitedb"]["root"]):
+      self._frontpage = "sitedb/templates/sitedb-min.html"
+      self._debug = False
+
   def _serve(self, items):
     """Serve static assets."""
     mtime = 0
@@ -75,16 +82,15 @@ class FrontPage:
         elif ctype != "text/javascript":
           ctype = "text/plain"
 
-        if origin == "sitedb":
-          jsmin.jsmin(data)
-
         if result == "":
           instances = [dict(id=k, title=v[".title"], order=v[".order"])
 		       for k, v in self._app.views["data"]._db.iteritems()]
           instances.sort(lambda a, b: a["order"] - b["order"])
-          result = ("var REST_SERVER_ROOT = '%s';\n"
+          result = ("var REST_DEBUG = %s;\n"
+                    "var REST_SERVER_ROOT = '%s';\n"
                     "var REST_INSTANCES = %s;\n"
-                    % (self._mount, cjson.encode(instances)))
+                    % ((self._debug and "true") or "false",
+                       self._mount, cjson.encode(instances)))
 
         result += "\n" + data + "\n"
 
@@ -94,11 +100,6 @@ class FrontPage:
         elif ctype != "text/css":
           ctype = "text/plain"
 
-        data = re.sub(r'/\*(?:.|[\r\n])*?\*/', '', data)
-        data = re.sub(r'[ \t]+', ' ', data)
-        data = re.sub(re.compile(r'^[ \t]+', re.M), ' ', data)
-        data = re.sub(re.compile(r'\s+$', re.M), '', data)
-        data = re.sub(r'\n+', '\n', data)
         result += "\n" + data + "\n"
 
       elif origin == "sitedb" and suffix == "html":
@@ -149,4 +150,4 @@ class FrontPage:
   @tools.gzip()
   def default(self, *args, **kwargs):
     """Generate the SiteDB front page."""
-    return self._serve(["sitedb/templates/sitedb.html"])
+    return self._serve([self._frontpage])
