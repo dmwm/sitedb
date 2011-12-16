@@ -1,31 +1,36 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
  <head
   ><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"
   /><meta name="keywords" content="CMS, SiteDB"
   /><title>SiteDB</title
- ></head
- ><body id='body' style="display:none"
+  ><link rel="stylesheet" type="text/css"
+     href="@MOUNT@/static?yui/cssreset/reset-min.css&yui/cssfonts/fonts-min.css&yui/cssgrids/grids-min.css&yui/cssbase/base-min.css&sitedb/css/sitedb.css"
+  /><!-- <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Tangerine|Inconsolata" /> -->
+ </head
+ ><body class="yui3-skin-sam"
   ><div id="header"
-    ><div class="heading"
-     ><div class="label">&nbsp;</div
-     ><h1 class="title">SiteDB</h1
-     ><h2 id="view" class="title">&nbsp;</h2
-    ></div
-    ><img id="cmslogo" src="static/cms-progress.gif" width="46" height="46"
-   /></div
-  ><div id="canvas"
-    ><div id="canvas-opts" class='menu' style="display:none"></div
-    ><div id="canvas-menu" class='menu' style="display:none"></div
-    ><div id="canvas-area"></div
-   ></div
-   ><div id="diagnostic"
-    ><div id='whoami'></div
-    ><div id='time'></div
-    ><div id="message"></div
+    ><img id="logo" src="@MOUNT@/static?sitedb/images/cms.gif" width="46" height="46"
+    ><div id="views"><h1 class="title first">SiteDB</h1></div
+    ><div id="instances"><h1 class="subtitle title first">Instance</h1></div
   ></div
-  ><style type="text/css">@CSS@</style
-  ><script type="text/javascript"><!-- @JAVASCRIPT@ --></script
+  ><div id="messages" style="display:none"></div
+  ><div id="body" class="yui3-g"
+    ><div id="sidebar-area" class="yui3-u"
+     ><div id="sidebar"
+       ><h3>My details</h3><div id="me"></div
+       ><h3>My sites</h3><div id="my-sites"></div
+       ><h3>My groups</h3><div id="my-groups"></div
+       ><h3>My roles</h3><div id="my-roles"></div
+       ><div id="debug-data" style="display:none"><h3>Data</h3></div
+       ><div id="debug-activity" style="display:none"><h3>Activity</h3></div
+     ></div
+    ></div
+    ><div id="content-area" class="yui3-u"
+      ><div id="content"></div
+    ></div
+  ></div
+  ><script type="text/javascript" src="@MOUNT@/static?yui/yui/yui.js&d3/d3/d3.min.js&sitedb/javascript/sprintf.js&sitedb/javascript/utils.js&sitedb/javascript/sitedb-state.js&sitedb/javascript/sitedb-app.js&sitedb/javascript/sitedb-view.js&sitedb/javascript/sitedb-view-start.js&sitedb/javascript/sitedb-view-sites.js&sitedb/javascript/sitedb-view-pledges.js&sitedb/javascript/sitedb-view-people.js&sitedb/javascript/sitedb-view-admin.js&sitedb/javascript/sitedb-start.js"></script
  ></body
 ></html>

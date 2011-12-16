@@ -1,6 +1,6 @@
-from cherrypy import expose, HTTPError
-from cherrypy.lib.static import serve_file
-import os, re, jsmin
+from cherrypy import expose, HTTPError, request, response, tools
+from cherrypy.lib import cptools, http
+import os, re, jsmin, hashlib, cjson
 
 class FrontPage:
   """SiteDB front page.
@@ -22,81 +22,131 @@ class FrontPage:
 
   def __init__(self, app, config, mount):
     """Initialise the main server."""
-    DIR = os.path.abspath(__file__).rsplit('/', 5)[0]
-    PVS = os.environ["PROTOVIS_ROOT"]
-    YUI = os.environ["YUI_ROOT"] + "/build"
-    X = self._x = (__file__.find("/xlib/") >= 0 and "x") or ""
-
-    def _load(dir, filename):
-      return file("%s/%s" % (dir, filename)).read()
-
-    def _css(dir, filename, rewrite):
-      text = _load(dir, filename)
-      if rewrite == "YUI":
-        path = filename.rsplit('/', 1)[0]
-        text = re.sub(r"url\((\.\./)+([-a-z._/]+)\)", r"url(yui/\2)", text)
-        text = re.sub(r"url\(([-a-z._]+)\)", r"url(yui/%s/\1)" % path, text)
-
-      text = re.sub(r'/\*(?:.|[\r\n])*?\*/', '', text)
-      text = re.sub(r'[ \t]+', ' ', text)
-      text = re.sub(re.compile(r'^[ \t]+', re.M), ' ', text)
-      text = re.sub(re.compile(r'\s+$', re.M), '', text)
-      text = re.sub(r'\n+', '\n', text)
-      return "\n" + text + "\n"
-
-    def _js(dir, filename, minimise):
-      text = _load(dir, filename)
-      if minimise:
-        text = jsmin.jsmin(text)
-      return "\n" + text + "\n"
-
-    CSS = [_css(dir, filename, rewrite)
-           for dir, filename, rewrite in
-           ((DIR, X + "data/css/sitedb.css", None),
-            (YUI, "container/assets/skins/sam/container.css", "YUI"),
-            (YUI, "resize/assets/skins/sam/resize.css", "YUI"))]
-
-    JS = [_js(dir, filename, min)
-          for dir, filename, min in
-          ((YUI, "yahoo/yahoo.js", True),
-           (YUI, "dom/dom.js", True),
-           (YUI, "event/event.js", True),
-           (YUI, "connection/connection.js", True),
-           (YUI, "utilities/utilities.js", False),
-           (YUI, "container/container-min.js", False),
-           (YUI, "resize/resize-min.js", False),
-           (PVS, "protovis-r3.2.js", False),
-           (DIR, X + "data/javascript/sprintf.js", True),
-           (DIR, X + "data/javascript/utils.js", True),
-           (DIR, X + "data/javascript/sitedb-addrs.js", True),
-           (DIR, X + "data/javascript/sitedb-core.js", True),
-           (DIR, X + "data/javascript/sitedb-admin.js", True),
-           (DIR, X + "data/javascript/sitedb-sites.js", True),
-           (DIR, X + "data/javascript/sitedb-people.js", True),
-           (DIR, X + "data/javascript/sitedb-pledges.js", True))]
-
+    CONTENT = os.path.abspath(__file__).rsplit('/', 5)[0]
+    X = (__file__.find("/xlib/") >= 0 and "x") or ""
+    self._mount = mount
     self._app = app
-    self._content = DIR
-    self._page = _load(DIR, X + "data/templates/sitedb.html") \
-                 .replace("@JS@", "".join(JS)) \
-                 .replace("@CSS@", "".join(CSS))
+    self._static = \
+    {
+      "sitedb":
+      {
+        "root": "%s/%sdata/" % (CONTENT, X),
+        "rx": re.compile(r"^[a-z]+/[-a-z0-9]+\.(?:css|js|png|gif|html)$")
+      },
+
+      "yui":
+      {
+        "root": "%s/build/" % os.environ["YUI3_ROOT"],
+        "rx": re.compile(r"^[-a-z0-9]+/[-a-z0-9/]+\.(?:css|js|png|gif)$")
+      },
+
+      "d3":
+      {
+        "root": "%s/data/" % os.environ["D3_ROOT"],
+        "rx": re.compile(r"^[-a-z0-9]+/[-a-z0-9]+(?:\.min)?\.(?:css|js)$")
+      }
+    }
+
+  def _serve(self, items):
+    """Serve static assets."""
+    mtime = 0
+    result = ""
+    ctype = ""
+
+    if not items:
+      raise HTTPError(404, "No such file")
+
+    for item in items:
+      origin, path = item.split("/", 1)
+      if origin not in self._static:
+        raise HTTPError(404, "No such file")
+      desc = self._static[origin]
+      fpath = desc["root"] + path
+      suffix = path.rsplit(".", 1)[-1]
+      if not desc["rx"].match(path) or not os.access(fpath, os.R_OK):
+        raise HTTPError(404, "No such file")
+
+      mtime = max(mtime, os.stat(fpath).st_mtime)
+      data = file(fpath).read()
+
+      if suffix == "js":
+        if not ctype:
+          ctype = "text/javascript"
+        elif ctype != "text/javascript":
+          ctype = "text/plain"
+
+        if origin == "sitedb":
+          jsmin.jsmin(data)
+
+        if result == "":
+          instances = [dict(id=k, title=v[".title"], order=v[".order"])
+		       for k, v in self._app.views["data"]._db.iteritems()]
+          instances.sort(lambda a, b: a["order"] - b["order"])
+          result = ("var REST_SERVER_ROOT = '%s';\n"
+                    "var REST_INSTANCES = %s;\n"
+                    % (self._mount, cjson.encode(instances)))
+
+        result += "\n" + data + "\n"
+
+      elif suffix == "css":
+        if not ctype:
+          ctype = "text/css"
+        elif ctype != "text/css":
+          ctype = "text/plain"
+
+        data = re.sub(r'/\*(?:.|[\r\n])*?\*/', '', data)
+        data = re.sub(r'[ \t]+', ' ', data)
+        data = re.sub(re.compile(r'^[ \t]+', re.M), ' ', data)
+        data = re.sub(re.compile(r'\s+$', re.M), '', data)
+        data = re.sub(r'\n+', '\n', data)
+        result += "\n" + data + "\n"
+
+      elif origin == "sitedb" and suffix == "html":
+        if not ctype:
+          ctype = "text/html"
+        elif ctype != "text/html":
+          ctype = "text/plain"
+
+        data = data.replace("@MOUNT@", self._mount)
+        result += data
+
+      elif suffix == "gif":
+        ctype = "image/gif"
+        result = data
+      elif suffix == "png":
+        ctype = "image/png"
+        result = data
+      else:
+        raise HTTPError(404, "Unexpected file type")
+
+    response.headers['Content-Type'] = ctype
+    response.headers['Last-Modified'] = http.HTTPDate(mtime)
+    response.headers['Cache-Control'] = "public, max-age=%d" % 86400
+    response.headers['ETag'] = '"%s"' % hashlib.sha1(result).hexdigest()
+    cptools.validate_since()
+    cptools.validate_etags()
+    return result
 
   @expose
-  def yui(self, *args, **kwargs):
-    """Serve YUI static assets needed by JavaScript."""
-    path = "/".join(args)
-    if re.match(r"^[-a-z_/]+\.(png|gif)$", path):
-      return serve_file(self._yui + '/' + path)
-    raise HTTPError(404, "No such file")
-
-  @expose
+  @tools.gzip()
   def static(self, *args, **kwargs):
-    """Serve our own static assets."""
-    if len(args) == 1 and re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
-      return serve_file(self._content + '/' + self._x + 'data/images/' + args[0])
-    raise HTTPError(404, "No such file")
+    """Serve static assets."""
+    if len(args) > 1 or (args and args[0] != "yui"):
+      raise HTTPError(404, "No such file")
+    paths = request.query_string.split("&")
+    if not paths:
+      raise HTTPError(404, "No such file")
+    if args:
+      paths = [args[0] + "/" + p for p in paths]
+    return self._serve(paths)
 
   @expose
-  def index(self):
+  def feedback(self, **kwargs):
+    """Receive browser problem feedback."""
+    return ""
+
+  @expose
+  @tools.gzip()
+  def default(self, *args, **kwargs):
     """Generate the SiteDB front page."""
-    return self._page
+    return self._serve(["sitedb/templates/sitedb.html"])
