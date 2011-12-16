@@ -1,8 +1,7 @@
-from cherrypy import expose, HTTPError, request, response, tools
-from cherrypy.lib import cptools, http
-import os, re, hashlib, cjson
+from RESTServer import RESTFrontPage
+import os, re
 
-class FrontPage:
+class FrontPage(RESTFrontPage):
   """SiteDB front page.
 
   SiteDB V2 provides only one web page, the front page. The page just
@@ -18,15 +17,13 @@ class FrontPage:
   client side, including things like searching.
 
   User navigation state is stored in the fragment part of the URL, e.g.
-  <https://cmsweb.cern.ch/sitedb#v,s,CERN> to view site 'CERN'."""
+  <https://cmsweb.cern.ch/sitedb/prod/sites/T1_CH_CERN>."""
 
   def __init__(self, app, config, mount):
     """Initialise the main server."""
     CONTENT = os.path.abspath(__file__).rsplit('/', 5)[0]
     X = (__file__.find("/xlib/") >= 0 and "x") or ""
-    self._mount = mount
-    self._app = app
-    self._static = \
+    roots = \
     {
       "sitedb":
       {
@@ -47,107 +44,9 @@ class FrontPage:
       }
     }
 
-    self._debug = True
-    self._frontpage = "sitedb/templates/sitedb.html"
-    if os.path.exists("%s/templates/sitedb-min.html"
-                      % self._static["sitedb"]["root"]):
-      self._frontpage = "sitedb/templates/sitedb-min.html"
-      self._debug = False
+    frontpage = "sitedb/templates/sitedb.html"
+    if os.path.exists("%s/templates/sitedb-min.html" % roots["sitedb"]["root"]):
+      frontpage = "sitedb/templates/sitedb-min.html"
 
-  def _serve(self, items):
-    """Serve static assets."""
-    mtime = 0
-    result = ""
-    ctype = ""
-
-    if not items:
-      raise HTTPError(404, "No such file")
-
-    for item in items:
-      origin, path = item.split("/", 1)
-      if origin not in self._static:
-        raise HTTPError(404, "No such file")
-      desc = self._static[origin]
-      fpath = desc["root"] + path
-      suffix = path.rsplit(".", 1)[-1]
-      if not desc["rx"].match(path) or not os.access(fpath, os.R_OK):
-        raise HTTPError(404, "No such file")
-
-      mtime = max(mtime, os.stat(fpath).st_mtime)
-      data = file(fpath).read()
-
-      if suffix == "js":
-        if not ctype:
-          ctype = "text/javascript"
-        elif ctype != "text/javascript":
-          ctype = "text/plain"
-
-        if result == "":
-          instances = [dict(id=k, title=v[".title"], order=v[".order"])
-		       for k, v in self._app.views["data"]._db.iteritems()]
-          instances.sort(lambda a, b: a["order"] - b["order"])
-          result = ("var REST_DEBUG = %s;\n"
-                    "var REST_SERVER_ROOT = '%s';\n"
-                    "var REST_INSTANCES = %s;\n"
-                    % ((self._debug and "true") or "false",
-                       self._mount, cjson.encode(instances)))
-
-        result += "\n" + data + "\n"
-
-      elif suffix == "css":
-        if not ctype:
-          ctype = "text/css"
-        elif ctype != "text/css":
-          ctype = "text/plain"
-
-        result += "\n" + data + "\n"
-
-      elif origin == "sitedb" and suffix == "html":
-        if not ctype:
-          ctype = "text/html"
-        elif ctype != "text/html":
-          ctype = "text/plain"
-
-        data = data.replace("@MOUNT@", self._mount)
-        result += data
-
-      elif suffix == "gif":
-        ctype = "image/gif"
-        result = data
-      elif suffix == "png":
-        ctype = "image/png"
-        result = data
-      else:
-        raise HTTPError(404, "Unexpected file type")
-
-    response.headers['Content-Type'] = ctype
-    response.headers['Last-Modified'] = http.HTTPDate(mtime)
-    response.headers['Cache-Control'] = "public, max-age=%d" % 86400
-    response.headers['ETag'] = '"%s"' % hashlib.sha1(result).hexdigest()
-    cptools.validate_since()
-    cptools.validate_etags()
-    return result
-
-  @expose
-  @tools.gzip()
-  def static(self, *args, **kwargs):
-    """Serve static assets."""
-    if len(args) > 1 or (args and args[0] != "yui"):
-      raise HTTPError(404, "No such file")
-    paths = request.query_string.split("&")
-    if not paths:
-      raise HTTPError(404, "No such file")
-    if args:
-      paths = [args[0] + "/" + p for p in paths]
-    return self._serve(paths)
-
-  @expose
-  def feedback(self, **kwargs):
-    """Receive browser problem feedback."""
-    return ""
-
-  @expose
-  @tools.gzip()
-  def default(self, *args, **kwargs):
-    """Generate the SiteDB front page."""
-    return self._serve([self._frontpage])
+    RESTFrontPage.__init__(self, app, config, mount, frontpage, roots,
+                           instances = lambda: app.views["data"]._db)

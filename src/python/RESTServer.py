@@ -1,6 +1,5 @@
-import re, signal, cherrypy, traceback, random, string, inspect, time
-from cherrypy import engine, expose, request, response, HTTPError, HTTPRedirect
-from cherrypy.lib.cptools import accept
+import os, re, hashlib, signal, cherrypy, traceback, random, string, inspect, time
+from cherrypy import engine, expose, request, response, HTTPError, HTTPRedirect, tools
 from threading import Thread, Condition, Lock
 from rfc822 import formatdate as rfc822_date
 from collections import namedtuple
@@ -14,6 +13,275 @@ _METHODS = ('GET', 'HEAD', 'POST', 'PUT', 'DELETE')
 _RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
 RESTArgs = namedtuple("RESTArgs", ["args", "kwargs"])
 
+######################################################################
+######################################################################
+class RESTFrontPage:
+  """Base class for a trivial front page intended to hand everything
+  over to a javascript-based user interface implementation.
+
+  This front-page simply serves static content like HTML pages, CSS,
+  JavaScript and images from number of configurable document roots.
+  Text content such as CSS and JavaScript can be scrunched together,
+  or combo-loaded, from several files. All the content supports the
+  standard ETag and last-modified validation for optimal caching.
+
+  The base class assumes the actual application consists of a single
+  front-page, which loads JavaScript and other content dynamically,
+  and uses HTML5 URL history features to figure out what to do. That
+  is, given application mount point <https://cmsweb.cern.ch/app>, all
+  links such as <https://cmsweb.cern.ch/app/foo/bar?q=xyz> get mapped
+  to the same page, which then figures out what to do at /foo/bar
+  relative location or with the query string part.
+
+  There is a special response for ``rest/preamble.js`` static file.
+  This will automatically generate a scriptlet of the following form,
+  plus any additional content passed in :ref:`javascript_preamble`::
+
+    var REST_DEBUG = (debug_mode),
+        REST_SERVER_ROOT = "(mount)",
+        REST_INSTANCES = [{ "id": "...", "title": "...", "rank": N }...];
+
+  REST_DEBUG, ``debug_mode``
+    Is set to true/false depending on the value of the constructor
+    :ref:`debug_mode` parameter, or if the default None, it's set
+    to false if running with minimised assets, i.e. frontpage matches
+    ``*-min.html``, true otherwise.
+
+  REST_SERVER_ROOT, ``mount``
+    The URL mount point of this object, needed for history init. Taken
+    from the constructor argument.
+
+  REST_INSTANCES
+    If the constructor is given `instances`, its return value is turned
+    into a sorted JSON list of available instances for JavaScript. Each
+    database instance should have the dictionary keys "``.title``" and
+    "``.order``" which will be used for human visible instance label and
+    order of appearance, respectively. The ``id`` is the label to use
+    for REST API URL construction: the instance dictionary key. This
+    variable will not be emitted at all if :ref:`instances` is None.
+
+  .. rubric:: Attributes
+
+  .. attribute:: _app
+
+     Reference to the application object given to the constructor.
+
+  .. attribute:: _mount
+
+     The mount point given in the constructor.
+
+  .. attribute:: _static
+
+     The roots given to the constructor, with ``rest/preamble.js`` added.
+
+  .. attribute:: _frontpage
+
+     The name of the front page file.
+
+  .. attribute:: _preamble
+
+     The ``rest/preamble.js`` computed as described above.
+
+  .. attribute:: _time
+
+     Server start-up time, used as mtime for ``rest/preamble.js``.
+  """
+
+  def __init__(self, app, config, mount, frontpage, roots,
+               instances = None, preamble = None, debug_mode = None):
+    """.. rubric:: Constructor
+
+    :arg app:                Reference to the :ref:`~.RESTMain` application.
+    :arg config:             :ref:`~.WMCore.Configuration` section for me.
+    :arg mount str:          URL tree mount point for this object.
+    :arg frontpage str:      Name of the front-page file, which must exist in
+                             one of the `roots`. If `debug_mode` is None and
+                             the name matches ``*-min.html``, then debug mode
+                             is set to False, True otherwise.
+    :arg roots dict:         Dictionary of roots for serving static files.
+                             Each key defines the label and path root for URLs,
+                             and the value should have keys "``root``" for the
+                             path to start looking up files, and "``rx``" for
+                             the regular expression to define valid file names.
+                             **All the root paths must end in a trailing slash.**
+    :arg instances callable: Callable which returns database instances, often::
+                               lambda: return self._app.views["data"]._db
+    :arg preamble str:       Optional string for additional content for the
+                             pseudo-file ``rest/preamble.js``.
+    :arg debug_mode bool:    Specifies how to set REST_DEBUG, see above."""
+
+    # Verify all roots do end in a slash.
+    for origin, info in roots.iteritems():
+      if not re.match(r"^[-a-z0-9]+$", origin):
+        raise ValueError("invalid root label")
+      if not info["root"].endswith("/"):
+        raise ValueError("%s 'root' must end in a slash" % origin)
+
+    # Add preamble pseudo-root.
+    roots["rest"] = { "root": None, "rx": re.compile(r"^preamble(?:-min)?\.js$") }
+
+    # Save various things.
+    self._start = time.time()
+    self._app = app
+    self._mount = mount
+    self._frontpage = frontpage
+    self._static = roots
+    if debug_mode is None:
+      debug_mode = not frontpage.endswith("-min.html")
+
+    # Delay preamble setup until server start-up so that we don't try to
+    # dereference instances() until after it's been finished constructing.
+    engine.subscribe("start", lambda: self._init(debug_mode, instances, preamble), 0)
+
+  def _init(self, debug_mode, instances, preamble):
+    """Delayed preamble initialisation after server is fully configured."""
+    self._preamble = ("var REST_DEBUG = %s" % ((debug_mode and "true") or "false"))
+    self._preamble += (", REST_SERVER_ROOT = '%s'" % self._mount)
+
+    if instances:
+       instances = [dict(id=k, title=v[".title"], order=v[".order"])
+                    for k, v in instances().iteritems()]
+       instances.sort(lambda a, b: a["order"] - b["order"])
+       self._preamble += (", REST_INSTANCES = %s" % cjson.encode(instances))
+
+    self._preamble += ";\n%s" % (preamble or "")
+
+  def _serve(self, items):
+    """Serve static assets.
+
+    Serve one or more files. If there is just one file, it can be text or
+    an image. If there are several files, they are smashed together as a
+    combo load operation. In that case it's assume the files are compatible,
+    for example all JavaScript or all CSS.
+
+    All normal response headers are set correctly, including Content-Type,
+    Last-Modified, Cache-Control and ETag. Automatically handles caching
+    related request headers If-Match, If-None-Match, If-Modified-Since,
+    If-Unmodified-Since and responds appropriately. The caller should use
+    CherryPy gzip tool to handle compression-related headers appropriately.
+
+    In general files are passed through unmodified. The only exception is
+    that HTML files will have @MOUNT@ string replaced with the mount point.
+
+    :arg items list(str): One or more file names to serve.
+    :returns: File contents combined as a single string."""
+    mtime = 0
+    result = ""
+    ctype = ""
+
+    if not items:
+      raise HTTPError(404, "No such file")
+
+    for item in items:
+      # There must be at least one slash in the file name.
+      if item.find("/") < 0:
+        raise HTTPError(404, "No such file")
+
+      # Split the name to the origin part - the name we look up in roots,
+      # and the remaining path part for the rest of the name under that
+      # root. For example 'yui/yui/yui-min.js' means we'll look up the
+      # path 'yui/yui-min.js' under the 'yui' root.
+      origin, path = item.split("/", 1)
+      if origin not in self._static:
+        raise HTTPError(404, "No such file")
+
+      # Look up the description and match path name against validation rx.
+      desc = self._static[origin]
+      if not desc["rx"].match(path):
+        raise HTTPError(404, "No such file")
+
+      # If this is not the pseudo-preamble, make sure the requested file
+      # exists, and if it does, read it and remember its mtime. For the
+      # pseudo preamble use the precomputed string and server start time.
+      if origin != "rest":
+        fpath = desc["root"] + path
+        if not os.access(fpath, os.R_OK):
+          raise HTTPError(404, "No such file")
+        try:
+          mtime = max(mtime, os.stat(fpath).st_mtime)
+          data = file(fpath).read()
+        except:
+          raise HTTPError(404, "No such file")
+      elif self._preamble:
+        mtime = max(mtime, self._start)
+        data = self._preamble
+      else:
+        raise HTTPError(404, "No such file")
+
+      # Concatenate contents and set content type based on name suffix.
+      ctypemap = { "js": "text/javascript",
+                   "css": "text/css",
+                   "html": "text/html" }
+      suffix = path.rsplit(".", 1)[-1]
+      if suffix in ctypemap:
+        if not ctype:
+          ctype = ctypemap[suffix]
+        elif ctype != ctypemap[suffix]:
+          ctype = "text/plain"
+        if suffix == "html":
+          data = data.replace("@MOUNT@", self._mount)
+        if result:
+          result += "\n"
+        result += data
+        if not result.endswith("\n"):
+          result += "\n"
+      elif suffix == "gif":
+        ctype = "image/gif"
+        result = data
+      elif suffix == "png":
+        ctype = "image/png"
+        result = data
+      else:
+        raise HTTPError(404, "Unexpected file type")
+
+    # Build final response + headers.
+    response.headers['Content-Type'] = ctype
+    response.headers['Last-Modified'] = cherrypy.lib.http.HTTPDate(mtime)
+    response.headers['Cache-Control'] = "public, max-age=%d" % 86400
+    response.headers['ETag'] = '"%s"' % hashlib.sha1(result).hexdigest()
+    cherrypy.lib.cptools.validate_since()
+    cherrypy.lib.cptools.validate_etags()
+    return result
+
+  @expose
+  @tools.gzip()
+  def static(self, *args, **kwargs):
+    """Serve static assets.
+
+    Assumes a query string in the format used by YUI combo loader, with one
+    or more file names separated by ampersands (&). Each name must be a plain
+    file name, to be found in one of the roots given to the constructor.
+
+    Path arguments must be empty, or consist of a single 'yui' string, for
+    use as the YUI combo loader. In that case all file names are prefixed
+    with 'yui/' to make them compatible with the standard combo loading.
+
+    Serves assets as documented in :py:func:`serve`."""
+    if len(args) > 1 or (args and args[0] != "yui"):
+      raise HTTPError(404, "No such file")
+    paths = request.query_string.split("&")
+    if not paths:
+      raise HTTPError(404, "No such file")
+    if args:
+      paths = [args[0] + "/" + p for p in paths]
+    return self._serve(paths)
+
+  @expose
+  def feedback(self, *args, **kwargs):
+    """Receive browser problem feedback. Doesn't actually do anything, just
+    returns an empty string response."""
+    return ""
+
+  @expose
+  @tools.gzip()
+  def default(self, *args, **kwargs):
+    """Generate the front page, as documented in :py:func:`serve`. The
+    JavaScript will actually work out what to do with the rest of the
+    URL arguments; they are not used here."""
+    return self._serve([self._frontpage])
+
+######################################################################
+######################################################################
 class MiniRESTApi:
   def __init__(self, app, config, mount):
     self.app = app
@@ -109,7 +377,7 @@ class MiniRESTApi:
       if not request.headers.elements('Accept'):
         raise NotAcceptable('Accept header required')
       formats = apiobj.get('formats', self.formats)
-      format = accept([f[0] for f in formats])
+      format = cherrypy.lib.cptools.accept([f[0] for f in formats])
       fmthandler = [f[1] for f in formats if f[0] == format][0]
     except HTTPError, e:
       format_names = ', '.join(f[0] for f in formats)
