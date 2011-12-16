@@ -125,6 +125,9 @@ class XMLFormat:
           chunk = XMLFormat.format_obj(obj)
           etagval = etag(etagval, chunk)
           yield chunk
+      except GeneratorExit:
+        trailer = None
+        raise
       finally:
         if trailer:
           etagval = etag(etagval, trailer)
@@ -209,6 +212,9 @@ class JSONFormat:
           etagval = etag(etagval, chunk)
           yield chunk
           comma = ","
+      except GeneratorExit:
+	trailer = None
+        raise
       finally:
         if trailer:
           etagval = etag(etagval, trailer)
