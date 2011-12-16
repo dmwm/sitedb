@@ -6,7 +6,7 @@ from SiteDB.RESTValidation import validate_num, validate_str
 from SiteDB.RESTError import InvalidObject
 from SiteDB.RESTFormat import RawFormat
 from SiteDB.RESTTools import tools
-import cjson, re
+import cjson, re, zlib
 
 server = None
 authz_key = None
@@ -128,6 +128,22 @@ class Tester(helper.CPWebCase):
     self.getPage("/test/simple", headers = h)
     self.assertStatus("200 OK")
     b = cjson.decode(self.body)
+    assert isinstance(b, dict)
+    assert "desc" not in b
+    assert "result" in b
+    assert isinstance(b["result"], list)
+    assert len(b["result"]) == 1
+    assert b["result"][0] == "foo"
+
+  def test_simple_json_deflate(self):
+    h = fake_authz_headers(authz_key.data)
+    h.append(("Accept", "application/json"))
+    h.append(("Accept-Encoding", "deflate"))
+    self.getPage("/test/simple", headers = h)
+    self.assertStatus("200 OK")
+    self.assertHeader("Content-Length")
+    self.assertHeader("Content-Encoding", "deflate")
+    b = cjson.decode(zlib.decompress(self.body, -zlib.MAX_WBITS))
     assert isinstance(b, dict)
     assert "desc" not in b
     assert "result" in b
