@@ -1448,7 +1448,7 @@ class DBConnectionPool(Thread):
     c.client_identifier = s["clientid"]
     c.clientinfo = req["id"]
     c.module = req["module"]
-    c.action = req["id"]
+    c.action = req["id"][:32]
 
     # Ping the server. This will detect some but not all dead connections.
     trace and cherrypy.log("%s ping" % trace)
