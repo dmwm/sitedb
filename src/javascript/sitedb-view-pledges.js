@@ -25,7 +25,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     var content;
     var now = new Date();
     var curyear = now.getFullYear();
-    var curpart = parseInt(now.getMonth()/3);
+    var curpart = parseInt(now.getMonth()/3) + 1;
     var quarters = {}, vquarter = req.query.q || "";
     var cclist = {}, cc = req.query.c || "";
     var roots = {}, root = (req.query.r || "").toUpperCase();
