@@ -31,9 +31,9 @@ class People(RESTEntity):
 
     elif method in ('PUT', 'POST'):
       validate_strlist('email',     param, safe, RX_EMAIL)
-      validate_strlist('forename',  param, safe, RX_NAME)
-      validate_strlist('surname',   param, safe, RX_NAME)
-      validate_strlist('dn',        param, safe, RX_DN)
+      validate_ustrlist('forename',  param, safe, RX_NAME)
+      validate_ustrlist('surname',   param, safe, RX_NAME)
+      validate_ustrlist('dn',        param, safe, RX_DN)
       validate_strlist('username',  param, safe, RX_USER)
       validate_strlist('phone1',    param, safe, RX_PHONE)
       validate_strlist('phone2',    param, safe, RX_PHONE)
@@ -57,8 +57,8 @@ class People(RESTEntity):
     :returns: sequence of rows of people; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
-      select email, forename, surname, dn,
-             username, phone1, phone2, im_handle
+      select email, to_nchar(forename) forename, to_nchar(surname) surname,
+             to_nchar(dn) dn, username, phone1, phone2, im_handle
       from contact
       """)
 

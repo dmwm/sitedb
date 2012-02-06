@@ -34,7 +34,7 @@ class Sites(RESTEntity):
     elif method in ('PUT', 'POST'):
       validate_strlist('site', param, safe, RX_SITE)
       validate_strlist('tier', param, safe, RX_TIER)
-      validate_strlist('country', param, safe, RX_COUNTRY)
+      validate_ustrlist('country', param, safe, RX_COUNTRY)
       validate_strlist('usage', param, safe, RX_USAGE)
       validate_strlist('url', param, safe, RX_URL)
       validate_strlist('logourl', param, safe, RX_URL)
@@ -62,8 +62,10 @@ class Sites(RESTEntity):
     :returns: sequence of rows of sites; field order in the returned
               *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
-      select s.name, t.pos tier_level, t.name tier, s.country, s.usage,
-             s.url, s.logourl, sam.gocdbid, s.getdevlrelease, s.manualinstall
+      select s.name, t.pos tier_level, t.name tier,
+             to_nchar(s.country) country,
+             s.usage, s.url, s.logourl, sam.gocdbid,
+             s.getdevlrelease, s.manualinstall
       from site s
       join tier t on t.id = s.tier
       left join site_cms_name_map cmap on cmap.site_id = s.id
