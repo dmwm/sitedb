@@ -188,6 +188,7 @@ class RESTFrontPage:
     for item in items:
       # There must be at least one slash in the file name.
       if item.find("/") < 0:
+        cherrypy.log("ERROR: directory required for front-page '%s'" % item)
         raise HTTPError(404, "No such file")
 
       # Split the name to the origin part - the name we look up in roots,
@@ -196,11 +197,15 @@ class RESTFrontPage:
       # path 'yui/yui-min.js' under the 'yui' root.
       origin, path = item.split("/", 1)
       if origin not in self._static:
+        cherrypy.log("ERROR: front-page '%s' origin '%s' not in any static root"
+                     % (item, origin))
         raise HTTPError(404, "No such file")
 
       # Look up the description and match path name against validation rx.
       desc = self._static[origin]
       if not desc["rx"].match(path):
+        cherrypy.log("ERROR: front-page '%s' not matched by rx '%s' for '%s'"
+                     % (item, desc["rx"].pattern, origin))
         raise HTTPError(404, "No such file")
 
       # If this is not the pseudo-preamble, make sure the requested file
@@ -209,16 +214,19 @@ class RESTFrontPage:
       if origin != "rest":
         fpath = desc["root"] + path
         if not os.access(fpath, os.R_OK):
+          cherrypy.log("ERROR: front-page '%s' file does not exist" % item)
           raise HTTPError(404, "No such file")
         try:
           mtime = max(mtime, os.stat(fpath).st_mtime)
           data = file(fpath).read()
         except:
+          cherrypy.log("ERROR: front-page '%s' failed to retrieve file" % item)
           raise HTTPError(404, "No such file")
       elif self._preamble:
         mtime = max(mtime, self._start)
         data = self._preamble
       else:
+        cherrypy.log("ERROR: front-page '%s' no preamble for 'rest'?" % item)
         raise HTTPError(404, "No such file")
 
       # Concatenate contents and set content type based on name suffix.
