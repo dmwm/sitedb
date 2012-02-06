@@ -65,6 +65,19 @@
   color:		#666;
 }
 
+button {
+  padding:		.5em;
+}
+
+input[type=text], input[type=password] {
+  width:		15em;
+  padding:		.2em;
+}
+
+input.invalid-value {
+  background-color:	rgba(255, 221, 221, 0.8);
+}
+
 /**********************************************************************/
 #logo {
   position:		fixed;
@@ -179,6 +192,10 @@
   vertical-align:	baseline;
 }
 
+#content table.mini td {
+  padding-top:		.1em;
+}
+
 #content td, #content th {
   padding:		.5em 2em 0 0;
   border:		none;
@@ -188,7 +205,7 @@
   background-color:	#d2e0ec;
 }
 
-#resources thead.tier {
+#resources .tier {
   background-color:	#cbd8e3;
 }
 
@@ -208,6 +225,32 @@
 
 #resources .middle {
   text-align:		center;
+}
+
+#content .rmbutton {
+  cursor:		pointer;
+  float:                right;
+}
+
+#content .rmicon {
+  background:           url(/sitedb/static/?sitedb/images/delete-small.gif) no-repeat;
+  visibility:		hidden;
+  display:		block;
+  opacity:		0.6;
+  height:		11px;
+  width:		16px;
+}
+
+#content tr:hover .rmicon {
+  visibility:           visible;
+}
+
+#content .rmbutton:hover .rmicon {
+  opacity:              1.0;
+}
+
+#content .yui3-aclist {
+  white-space:		nowrap;
 }
 
 #content dl.mini {

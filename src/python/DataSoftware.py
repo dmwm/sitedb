@@ -25,7 +25,7 @@ class Software(RESTEntity):
       validate_strlist('arch',    param, safe, RX_ARCH)
       validate_lengths(safe, 'site', 'ce', 'release', 'arch')
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
                     group=["global"], site=[site])
 
   @restcall
@@ -47,9 +47,9 @@ class Software(RESTEntity):
 
   @restcall
   def put(self, site, ce, release, arch):
-    """Add a software pin. Site admin can update their own site, global
-    admin can update pins for all the sites. When more than on argument is
-    given, there must be an equal number of arguments for all the parameters.
+    """Add a software pin. Site executive / admin can update their own site,
+    global admin can update pins for all the sites. When more than on argument
+    is given, there must be an equal number of arguments for all the parameters.
     For input validation requirements, see the field descriptions above. It
     is an error to attempt to insert an existing pin, or to pin software on
     a non-existent CE resource.
@@ -73,9 +73,9 @@ class Software(RESTEntity):
 
   @restcall
   def delete(self, site, ce, release, arch):
-    """Remove a software pin. Site admin can update their own site, global
-    admin can update pins for all the sites. When more than one argument is
-    given, there must be an equal number of arguments for all the parameters.
+    """Remove a software pin. Site executive / admin can update their own site,
+    global admin can update pins for all the sites. When more than one argument
+    is given, there must be an equal number of arguments for all the parameters.
     For input validation requirements, see the field descriptions above. It
     is an error to attempt to remove a non-existent pin.
 

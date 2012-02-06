@@ -23,7 +23,7 @@ class UserSites(RESTEntity):
       validate_strlist('role', param, safe, RX_LABEL)
       validate_lengths(safe, 'email', 'site', 'role')
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
   @restcall
@@ -45,7 +45,7 @@ class UserSites(RESTEntity):
 
   @restcall
   def put(self, email, site, role):
-    """Insert new privilege associations. Site admin can update their own
+    """Insert new privilege associations. Site executive can update their own
     site, global admin can update associations for any site. When more than
     one argument is given, there must be an equal number of arguments for
     all the parameters. For input validation requirements, see the field
@@ -67,7 +67,7 @@ class UserSites(RESTEntity):
 
   @restcall
   def delete(self, email, site, role):
-    """Delete privilege associations. Site admin can update their own site,
+    """Delete privilege associations. Site executive can update their own site,
     global admin can update associations for any site. When more than one
     argument is given, there must be an equal number of arguments for all
     the parameters. For input validation requirements, see the field

@@ -3,119 +3,390 @@ var Admin = X.inherit(View, function(Y, gui, rank)
   /** Myself. */
   var _self = this;
 
+  /** Current state object, for event callbacks. */
+  var _state = null;
+
+  /** Event delegate for handling removals. */
+  var _rmitem = null;
+  var _rmrole = null;
+  var _rmgroup = null;
+
+  /** View master objects. */
+  var _views = new ViewContentSet(Y, {
+    main: "view-admin-main",
+    group: "view-admin-group",
+    role: "view-admin-role",
+    site: "view-admin-site"
+  });
+
   /** Invoke view constructor. */
   View.call(this, Y, gui, rank, "Admin",
             ["whoami", "roles", "groups", "people", "sites",
              "site-responsibilities", "group-responsibilities"]);
 
-  var _initLists = function(state)
+  /** Action handler for creating roles. */
+  var _createRole = function(title)
   {
-    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
-      return d3.ascending(a.canonical_name, b.canonical_name); });
-
-    var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
-      return d3.ascending(a.canonical_name, b.canonical_name); });
-
-    var nroles = Y.one("#admin-role-list");
-    var ngroups = Y.one("#admin-group-list");
-    var ninfo = Y.one("#admin-item");
-    if (_self.doc.get('children').size() != 1 || !nroles || !ngroups || !ninfo)
-    {
-      _self.doc.setContent
-        ("<div style='width:95%;margin:0 0 1em'>"
-
-         + "<div class='group'><h2>Roles</h2><table>"
-         + "<thead><tr><th style='text-align:left'>Name</th>"
-         + "<th style='text-align:right'>Members</th></tr></thead>"
-         + "<tbody id='admin-role-list'></tbody></table></div>"
-
-         + "<div class='group'><h2>Groups</h2><table>"
-         + "<thead><tr><th style='text-align:left'>Name</th>"
-         + "<th style='text-align:right'>Members</th></tr></thead>"
-         + "<tbody id='admin-group-list'></tbody></table></div>"
-
-         + "<div id='admin-info' class='group' style='width:40%;display:none'>"
-         + "</div></div>");
-
-      nroles = Y.one("#admin-role-list");
-      ngroups = Y.one("#admin-group-list");
-      ninfo = Y.one("#admin-info");
-    }
-
-    return { state: state, roles: roles, groups: groups,
-             nroles: nroles, ngroups: ngroups, ninfo: ninfo };
+    if (title)
+      _state.modify([{
+        method: "PUT", entity: "roles", data: { "title": title },
+        message: "Creating role '" + title + "'"
+      }]);
   };
 
-  var _showLists = function(info)
+  /** Action handler for removing roles. */
+  var _removeRole = function(e)
   {
-    var instance = info.state.currentInstance();
-    var content = "";
+    var x = X.findEventAncestor(e, "x-role");
+    if (! x) return;
 
-    Y.each(info.roles, function(r) {
-      content += "<tr><td style='padding-top:0.1em'>"
-                 + _self.roleLink(instance, r)
-                 + "</td><td align='right' style='padding-top:0.1em'>"
-                 + r.members.length + "</td></tr>";
-    });
-    if (info.nroles.getContent() != content)
-      info.nroles.setContent(content);
+    var obj = _state.rolesByTitle[x.value];
+    if (! obj) return;
 
-    content = "";
-    Y.each(info.groups, function(g) {
-      content += "<tr><td style='padding-top:0.1em'>"
-                 + _self.groupLink(instance, g)
-                 + "</td><td align='right' style='padding-top:0.1em'>"
-                 + g.members.length + "</td></tr>";
-    });
-    if (info.ngroups.getContent() != content)
-      info.ngroups.setContent(content);
+    X.confirm(Y, "Delete role '" + Y.Escape.html(obj.title) + "' with "
+              + obj.members.length + " member"
+              + (obj.members.length != 1 ? "s" : "") + "?",
+              "Delete", function() {
+                _state.modify([{
+                  method: "DELETE", entity: "roles",
+                  data: { "title": obj.title },
+                  invalidate: ["site-responsibilities", "group-responsibilities"],
+                  message: "Deleting role '" + obj.title + "'"
+                }]);
+              });
   };
 
+  /** Action handler for creating groups. */
+  var _createGroup = function(name)
+  {
+    if (name)
+      _state.modify([{
+        method: "PUT", entity: "groups", data: { "name": name },
+        message: "Creating group '" + name + "'"
+      }]);
+  };
+
+  /** Action handler for removing groups. */
+  var _removeGroup = function(e)
+  {
+    var x = X.findEventAncestor(e, "x-group");
+    if (! x) return;
+
+    var obj = _state.groupsByName[x.value];
+    if (! obj) return;
+
+    X.confirm(Y, "Delete group '" + Y.Escape.html(obj.name) + "' with "
+              + obj.members.length + " member"
+              + (obj.members.length != 1 ? "s" : "") + "?",
+              "Delete", function() {
+                _state.modify([{
+                  method: "DELETE", entity: "groups",
+                  data: { "name": obj.name },
+                  invalidate: [ "group-responsibilities" ],
+                  message: "Deleting group '" + obj.name + "'"
+                }]);
+              });
+  };
+
+  /** Action handler for adding a person to site or group role. */
+  var _addRoleMember = function(role, site, group, person)
+  {
+    role = role &&
+      Y.Array.find(Y.Object.values(_state.rolesByTitle),
+                   function(r) { return r.canonical_name == role; });
+
+    group = group &&
+      Y.Array.find(Y.Object.values(_state.groupsByName),
+                   function(g) { return g.canonical_name == group; });
+
+    site = (site in _state.sitesByCMS) && _state.sitesByCMS[site];
+
+    if (! role || ! (group || site) || ! person)
+      return;
+
+    if (group)
+      _state.modify([{
+        method: "PUT", entity: "group-responsibilities",
+        data: { "email": person.email, "role": role.title,
+                "user_group": group.name },
+        message: "Adding role '" + Y.Escape.html(role.title)
+                 + "' for '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] in group '"
+                 + Y.Escape.html(group.name) + "'"
+      }]);
+    else
+      _state.modify([{
+        method: "PUT", entity: "site-responsibilities",
+        data: { "email": person.email, "role": role.title, "site": site.name },
+        message: "Adding role '" + Y.Escape.html(role.title)
+                 + "' for '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] for site '"
+                 + Y.Escape.html(site.canonical_name) + "'"
+      }]);
+  };
+
+  /** Action handler for removing a person from site or group role. */
+  var _removeRoleMember = function(e)
+  {
+    var x = X.findEventAncestor(e, "x-role");
+    if (! x) return;
+
+    var role = x.value;
+    var site = X.getDOMAttr(x.node, "x-site");
+    var group = X.getDOMAttr(x.node, "x-group");
+    var person = X.getDOMAttr(x.node, "x-person");
+
+    if (! (role in _state.rolesByTitle)
+        || (site && ! (site in _state.sitesByCMS))
+        || (group && ! (group in _state.groupsByName))
+        || ! (person in _state.peopleByMail))
+      return;
+
+    role = _state.rolesByTitle[role];
+    site = (site && _state.sitesByCMS[site]);
+    group = (group && _state.groupsByName[group]);
+    person = _state.peopleByMail[person];
+
+    if (group)
+      _state.modify([{
+        method: "DELETE", entity: "group-responsibilities",
+        data: { "email": person.email, "role": role.title,
+                "user_group": group.name },
+        message: "Removing role '" + Y.Escape.html(role.title)
+                 + "' from '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] in group '"
+                 + Y.Escape.html(group.name) + "'"
+      }]);
+    else
+      _state.modify([{
+        method: "DELETE", entity: "site-responsibilities",
+        data: { "email": person.email, "role": role.title, "site": site.name },
+        message: "Removing role '" + Y.Escape.html(role.title)
+                 + "' from '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] for site '"
+                 + Y.Escape.html(site.canonical_name) + "'"
+      }]);
+  };
+
+  /** Make a YUI <input> node auto-complete for people. */
+  var _selectPerson = function(state, view, item, onselect)
+  {
+    var node = view.node(item);
+    node.plug(Y.Plugin.AutoComplete, {
+      source: function() { return state.people; },
+      resultTextLocator: function(p) { return p.fullname + " | " + p.email; },
+      resultFilters: "subWordMatchFold",
+      resultHighlighter: "subWordMatchFold",
+      maxResults: 25
+    });
+
+    var current = null, keyselect = false;
+    node.ac.on(["query", "clear"], function(e) {
+      current = null; keyselect = false;
+    });
+    node.ac.on("select", function(e) {
+      keyselect = (e.originEvent.type == "keydown");
+      current = e.result.raw;
+      onselect(current);
+    });
+    node.on("keypress", function(e) {
+      if (e.keyCode == 13 && current && !keyselect)
+        onselect(current);
+      keyselect = false;
+    });
+  };
+
+  /** View attach handler: delegate remove buttons on this page. */
+  this.attach = function()
+  {
+    _rmitem = _self.doc.delegate("click", _removeRoleMember, ".rmitem");
+    _rmrole = _self.doc.delegate("click", _removeRole, ".rmrole");
+    _rmgroup = _self.doc.delegate("click", _removeGroup, ".rmgroup");
+  };
+
+  /** View detach handler: detach delegations for remove buttons. */
+  this.detach = function()
+  {
+    _views.detach();
+    _rmitem.detach();
+    _rmrole.detach();
+    _rmgroup.detach();
+    _state = null;
+  };
+
+  /** The main view page, show roles and groups. For global admin
+      allow role and group deletion and creation too. */
   this.main = function(req)
   {
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
     _self.title(state, "Admin");
     _self.loading(state);
+    _state = state;
 
-    var info = _initLists(state);
-    if (info.ninfo.getStyle("display") != "none")
-      info.ninfo.setStyle("display", "none");
-    if (info.ninfo.getContent() != "")
-      info.ninfo.setContent("");
-    _showLists(info);
+    var isadmin = state.isGlobalAdmin();
+    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+
+    var view = _views.attach("main", _self.doc);
+    view.validator("add-role", X.rxvalidate(gui.rx.LABEL, true));
+    view.validator("add-group", X.rxvalidate(gui.rx.LABEL, true));
+    view.on("add-role", "keypress", function(e) {
+      if (e.keyCode == 13) _createRole(view.valueOf("add-role"));
+    });
+    view.on("add-group", "keypress", function(e) {
+      if (e.keyCode == 13) _createGroup(view.valueOf("add-group"));
+    });
+
+    var content = "";
+    Y.each(roles, function(r) {
+      content += "<tr><td style='padding-top:0.1em'>"
+                 + _self.roleLink(instance, r)
+                 + "</td><td align='right' style='padding-top:0.1em'>"
+                 + r.members.length + "</td><td>"
+                 + "<span class='rmbutton rmrole' title='Remove item'"
+                 + " x-role='" + X.encodeAsPath(r.title) + "'"
+                 + "><span class='rmicon'></span></span></td></tr>";
+    });
+    view.content("roles", content);
+
+    content = "";
+    Y.each(groups, function(g) {
+      content += "<tr><td style='padding-top:0.1em'>"
+                 + _self.groupLink(instance, g)
+                 + "</td><td align='right' style='padding-top:0.1em'>"
+                 + g.members.length + "</td><td>"
+                 + "<span class='rmbutton rmgroup' title='Remove item'"
+                 + " x-group='" + X.encodeAsPath(g.name) + "'"
+                 + "><span class='rmicon'></span></span></td></tr>";
+    });
+    view.content("groups", content);
+
+    view.render();
+    _self.doc.all(".rmbutton").each(function(n) {
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+    _self.doc.all("input").each(function(n) {
+      n.set("disabled", !isadmin);
+      n.setStyle("display", isadmin ? "" : "none");
+    });
   };
 
-  this.create = function(req)
+  /** Manage group membership. For unprivileged users just show the
+      members for this group for various different roles. For global
+      and group admins allow adding and removing members. */
+  this.manageGroup = function(req)
   {
-    var state = _self.require.call(_self, req.params.instance);
-    _self.doc.setContent("Database editing not yet supported");
-  };
-
-  this.remove = function(req)
-  {
-    var state = _self.require.call(_self, req.params.instance);
-    _self.doc.setContent("Database editing not yet supported");
-  };
-
-  this.manage = function(req)
-  {
+    var name = unescape(req.params.name);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
     _self.loading(state);
+    _state = state;
 
-    var info = _initLists(state);
-    var type = unescape(req.params.type);
-    var name = unescape(req.params.name);
     var rolesByCName = {}, groupsByCName = {};
-    Y.each(info.roles, function(i) { rolesByCName[i.canonical_name] = i; });
-    Y.each(info.groups, function(i) { groupsByCName[i.canonical_name] = i; });
+    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    Y.each(roles, function(i) { rolesByCName[i.canonical_name] = i; });
+    Y.each(groups, function(i) { groupsByCName[i.canonical_name] = i; });
 
-    var obj, title;
-    var section = type.charAt(0).toUpperCase()+type.slice(1);
-    if (type == "group" && name in groupsByCName)
+    var isadmin = (state.isGlobalAdmin()
+                   || state.hasGroupRole("Global Admin", name)
+                   || state.hasGroupRole("Admin", name));
+    var obj, title, content;
+    var section = "Group";
+    if (name in groupsByCName)
       obj = groupsByCName[name], title = obj.name;
-    else if (type == "role" && name in rolesByCName)
+    else if (state.complete)
+    {
+      gui.history.replace("/" + instance + "/admin");
+      return;
+    }
+
+    var view = _views.attach("group", _self.doc);
+    view.__group = obj && name;
+    view.once(_selectPerson, state, view, "person", function(p) {
+      _addRoleMember(view.valueOf("role"), null, view.__group, p);
+    });
+
+    content = "<option value=''>Select role</option>";
+    Y.each(isadmin ? roles : [], function(r) {
+      content += "<option value='" + X.encodeAsPath(r.canonical_name)
+                 + "'>" + Y.Escape.html(r.title) + "</option>";
+    });
+    view.content("role", content);
+
+    _self.title(state, title, section + "s", "Admin");
+    if (obj)
+    {
+      view.content("title", section + " " + Y.Escape.html(title)
+                   + " [" + Y.Escape.html(obj.canonical_name) + "]");
+
+      content = "";
+      Y.each(roles, function(r) {
+        if (obj.name in r.group)
+        {
+          var v = r.group[obj.name];
+          content += "<tr><td rowspan='" + v.length + "'>"
+                     + Y.Escape.html(r.title) + "</td>";
+          Y.each(v, function(p, ix) {
+            content += (ix ? "<tr>" : "") + "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(r.title) + "'"
+                       + " x-group='" + X.encodeAsPath(obj.name) + "'"
+                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-admin='" + (isadmin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, p)
+                       + "</td></tr>";
+          });
+        }
+      });
+      view.content("members", content);
+    }
+    else
+    {
+      view.content("title", "Loading...");
+      view.content("members", "");
+    }
+
+    view.render();
+    _self.doc.all(".rmbutton").each(function(n) {
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+    _self.doc.all("select, input").each(function(n) {
+      n.set("disabled", !isadmin);
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+  };
+
+  /** Manage role membership. For unprivileged users just show the
+      members for this role for various different groups and/or sites.
+      For global and group admins allow adding and removing members. */
+  this.manageRole = function(req)
+  {
+    var name = unescape(req.params.name);
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    _self.loading(state);
+    _state = state;
+
+    var rolesByCName = {}, groupsByCName = {};
+    var sites = Y.Object.values(state.sitesByCMS).sort(state.sortSite);
+    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    Y.each(roles, function(i) { rolesByCName[i.canonical_name] = i; });
+    Y.each(groups, function(i) { groupsByCName[i.canonical_name] = i; });
+
+    var isgadmin = state.isGlobalAdmin();
+    var obj, title, content;
+    var section = "Role";
+    if (name in rolesByCName)
       obj = rolesByCName[name], title = obj.title;
     else if (state.complete)
     {
@@ -123,77 +394,198 @@ var Admin = X.inherit(View, function(Y, gui, rank)
       return;
     }
 
-    _self.title(state, title, section + "s", "Admin");
-    _showLists(info);
+    var view = _views.attach("role", _self.doc);
+    view.__role = obj && name;
+    view.once(_selectPerson, state, view, "group-person", function(p) {
+      _addRoleMember(view.__role, null, view.valueOf("group"), p);
+    });
+    view.once(_selectPerson, state, view, "site-person", function(p) {
+      _addRoleMember(view.__role, view.valueOf("site"), null, p);
+    });
 
-    var content = "";
+    content = "<option value=''>Select group</option>";
+    Y.each(groups, function(g) {
+      if (isgadmin
+          || state.hasGroupRole("Global Admin", g.name)
+          || state.hasGroupRole("Admin", g.name))
+        content += "<option value='" + X.encodeAsPath(g.canonical_name)
+                   + "'>" + Y.Escape.html(g.name) + "</option>";
+    });
+    view.content("group", content);
+
+    content = "<option value=''>Select site</option>";
+    Y.each(sites, function(s) {
+      if (isgadmin || state.hasSiteRole("Site Executive", s.canonical_name))
+        content += "<option value='" + X.encodeAsPath(s.canonical_name)
+                   + "'>" + Y.Escape.html(s.canonical_name) + "</option>";
+    });
+    view.content("site", content);
+
+    _self.title(state, title, section + "s", "Admin");
     if (obj)
     {
-      content += "<h2>" + section + " " + Y.Escape.html(title)
-                 + " [" + Y.Escape.html(obj.canonical_name) + "]</h2>";
-      if ("site" in obj)
-      {
-        var list = Object.keys(obj.site).sort(d3.ascending);
-        if (list.length)
-        {
-          content += "<dl><dt>Sites</dt><dd>";
-          Y.each(list, function(i, ix) {
-            content += (ix ? ", " : "")
-              + _self.siteLink(instance, state.sitesByName[i]);
-          });
-          content += "</dd></dl>";
-        }
-      }
-      if ("group" in obj)
-      {
-        var list = Object.keys(obj.group).sort(d3.ascending);
-        if (list.length)
-        {
-          content += "<dl><dt>Groups</dt><dd>";
-          Y.each(list, function(i, ix) {
-            content += (ix ? ", " : "")
-              + _self.groupLink(instance, state.groupsByName[i]);
-          });
-          content += "</dd></dl>";
-        }
-      }
+      view.content("title", section + " " + Y.Escape.html(title)
+                   + " [" + Y.Escape.html(obj.canonical_name) + "]");
 
-      if ("name" in obj)
-      {
-        var list = Y.Array.filter(info.roles,function(r) {
-          return obj.name in r.group; });
-
-        if (list.length)
+      content = "";
+      Y.each(groups, function(g) {
+        if (g.name in obj.group)
         {
-          content += "<dl><dt>Roles</dt><dd>";
-          Y.each(list, function(i, ix) {
-            content += (ix ? ", " : "") + _self.roleLink(instance, i);
+          var v = obj.group[g.name];
+          content += "<tr><td rowspan='" + v.length + "'>"
+                     + Y.Escape.html(g.name) + "</td>";
+          Y.each(v, function(p, ix) {
+            var isadmin = isgadmin
+                          || state.hasGroupRole("Global Admin", g.name)
+                          || state.hasGroupRole("Admin", g.name);
+            content += (ix ? "<tr>" : "") + "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(obj.title) + "'"
+                       + " x-group='" + X.encodeAsPath(g.name) + "'"
+                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-admin='" + (isadmin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, p)
+                       + "</td></tr>";
           });
-          content += "</dd></dl>";
         }
-      }
+      });
+      view.content("group-members", content);
 
-      content += "<dl><dt>Members</dt><dd>";
-      if (obj.members.length)
-        Y.each(obj.members, function(i, ix) {
-          content += (ix ? ", " : "") + _self.personLink(instance, i);
-        });
-      else
-        content += "<p class='faded'>(None)</p>";
-      content += "</dd></dl>";
+      content = "";
+      Y.each(sites, function(s) {
+        if (s.name in obj.site)
+        {
+          var admin = isgadmin || state.hasSiteRole("Site Executive", s.name);
+          var v = obj.site[s.name];
+          content += "<tr><td rowspan='" + v.length + "'>"
+                     + Y.Escape.html(s.canonical_name) + "</td>";
+          Y.each(v, function(p, ix) {
+            content += (ix ? "<tr>" : "") + "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(obj.title) + "'"
+                       + " x-site='" + X.encodeAsPath(s.canonical_name) + "'"
+                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-admin='" + (admin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, p)
+                       + "</td></tr>";
+          });
+        }
+      });
+      view.content("site-members", content);
+    }
+    else
+    {
+      view.content("title", "Loading...");
+      view.content("group-members", "");
+      view.content("site-members", "");
     }
 
-    if (info.ninfo.getContent() != content)
-      info.ninfo.setContent(content);
-    if (info.ninfo.getStyle("display") != "")
-      info.ninfo.setStyle("display", "");
+    view.render();
+    _self.doc.all(".rmbutton").each(function(n) {
+      var isadmin = X.getDOMAttr(n, "x-admin") == "yes";
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+    _self.doc.all("select").each(function(n) {
+      var isadmin = n.get("children").size() > 1;
+      var input = n.ancestor("tr").one("input");
+      n.set("disabled", !isadmin);
+      n.setStyle("display", isadmin ? "" : "none");
+      input.set("disabled", !isadmin);
+      input.setStyle("display", isadmin ? "" : "none");
+    });
+  };
+
+  /** Manage site roles. For unprivileged users just show the members for
+      this site for various different roles. For global admins and the
+      site executives allow adding and removing members. */
+  this.manageSite = function(req)
+  {
+    var name = unescape(req.params.name);
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    _self.loading(state);
+    _state = state;
+
+    var rolesByCName = {};
+    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+    Y.each(roles, function(i) { rolesByCName[i.canonical_name] = i; });
+
+    var isadmin = (state.isGlobalAdmin()
+                   || state.hasSiteRole("Site Executive", name));
+    var obj, title, content;
+    var section = "Site";
+    if (name in state.sitesByCMS)
+      obj = state.sitesByCMS[name], title = obj.canonical_name;
+    else if (state.complete)
+    {
+      gui.history.replace("/" + instance + "/admin");
+      return;
+    }
+
+    var view = _views.attach("site", _self.doc);
+    view.__site = obj && name;
+    view.once(_selectPerson, state, view, "person", function(p) {
+      _addRoleMember(view.valueOf("role"), view.__site, null, p);
+    });
+
+    content = "<option value=''>Select role</option>";
+    Y.each(isadmin ? roles : [], function(r) {
+      content += "<option value='" + X.encodeAsPath(r.canonical_name)
+                 + "'>" + Y.Escape.html(r.title) + "</option>";
+    });
+    view.content("role", content);
+
+    _self.title(state, title, section + "s", "Admin");
+    if (obj)
+    {
+      view.content("title", section + " " + Y.Escape.html(title));
+
+      content = "";
+      Y.each(roles, function(r) {
+        if (r.title in obj.responsibilities)
+        {
+          var v = obj.responsibilities[r.title];
+          content += "<tr><td rowspan='" + v.length + "'>"
+                     + Y.Escape.html(r.title) + "</td>";
+          Y.each(v, function(p, ix) {
+            content += (ix ? "<tr>" : "") + "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(r.title) + "'"
+                       + " x-site='" + X.encodeAsPath(obj.canonical_name) + "'"
+                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-admin='" + (isadmin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, p)
+                       + "</td></tr>";
+          });
+        }
+      });
+      view.content("members", content);
+    }
+    else
+    {
+      view.content("title", "Loading...");
+      view.content("members", "");
+    }
+
+    view.render();
+    _self.doc.all(".rmbutton").each(function(n) {
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+    _self.doc.all("select, input").each(function(n) {
+      n.set("disabled", !isadmin);
+      n.setStyle("display", isadmin ? "" : "none");
+    });
   };
 
   // Handle history controller state.
   gui.history.route("/:instance/admin", this.main);
-  gui.history.route("/:instance/admin/new/:type", this.create);
-  gui.history.route("/:instance/admin/delete/:type", this.remove);
-  gui.history.route("/:instance/admin/:type/:name", this.manage);
+  gui.history.route("/:instance/admin/group/:name", this.manageGroup);
+  gui.history.route("/:instance/admin/role/:name", this.manageRole);
+  gui.history.route("/:instance/admin/site/:name", this.manageSite);
 
   // Response handle to window resize.
   this.onresize = function()

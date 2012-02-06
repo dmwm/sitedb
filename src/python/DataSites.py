@@ -46,7 +46,7 @@ class Sites(RESTEntity):
                        'devel_release', 'manual_install')
 
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
     elif method == 'DELETE':
@@ -76,11 +76,11 @@ class Sites(RESTEntity):
   @restcall
   def post(self, site, tier, country, usage, url, logourl,
            gocdbid, devel_release, manual_install):
-    """Update the information for sites identified by `site`. A site admin
-    can update their own site's record, global admins the info for all the
-    sites. When more than one argument is given, there must be equal number
-    of arguments for all the parameters.  It is an error to attempt to
-    update a non-existent `site`.
+    """Update the information for sites identified by `site`. A site
+    executive can update their own site's record, global admins the info
+    for all the sites. When more than one argument is given, there must be
+    equal number of arguments for all the parameters.  It is an error to
+    attempt to update a non-existent `site`.
 
     :arg list site: site names to insert;
     :arg list tier: new values;
@@ -178,7 +178,7 @@ class SiteNames(RESTEntity):
       validate_strlist('alias', param, safe, RX_NAME)
       validate_lengths(safe, 'type', 'site', 'alias')
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
   @restcall
@@ -210,7 +210,7 @@ class SiteNames(RESTEntity):
 
   @restcall
   def put(self, type, site, alias):
-    """Insert new site names. Site admin can update their own site, global
+    """Insert new site names. Site executive can update their own site, global
     admin can update names for all the sites. When more than one argument is
     given, there must be an equal number of arguments for all the parameters.
     For input validation requirements, see the field descriptions above.
@@ -262,12 +262,14 @@ class SiteNames(RESTEntity):
       updated += c.rowcount
 
     result = rows([{ "modified": updated }])
-    request.dbconn.commit()
+    trace = request.db["handle"]["trace"]
+    trace and cherrypy.log("%s commit" % trace)
+    request.db["handle"]["connection"].commit()
     return result
 
   @restcall
   def delete(self, type, site, alias):
-    """Delete site name associations. Site admin can update their own site,
+    """Delete site name associations. Site executive can update their own site,
     global admin can update names for all the sites. When more than one
     argument is given, there must be an equal number of arguments for all
     the parameters. For input validation requirements, see the field
@@ -321,7 +323,9 @@ class SiteNames(RESTEntity):
       updated += c.rowcount
 
     result = rows([{ "modified": updated }])
-    request.dbconn.commit()
+    trace = request.db["handle"]["trace"]
+    trace and cherrypy.log("%s commit" % trace)
+    request.db["handle"]["connection"].commit()
     return result
 
 ######################################################################
@@ -368,7 +372,7 @@ class SiteResources(RESTEntity):
 
     if method in ('PUT', 'DELETE'):
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
                     group=["global"], site=[site])
 
   @restcall
@@ -387,11 +391,12 @@ class SiteResources(RESTEntity):
 
   @restcall
   def put(self, site, type, fqdn, is_primary):
-    """Insert new site resources. Site admin can update their own site, global
-    admin can update resources for all the sites. When more than one argument
-    is given, there must be an equal number of arguments for all the parameters.
-    For input validation requirements, see the field descriptions above. It is
-    an error to attemp to insert an existing site resource.
+    """Insert new site resources. Site executive / admin can update their own
+    site, global admin can update resources for all the sites. When more than
+    one argument is given, there must be an equal number of arguments for all
+    the parameters. For input validation requirements, see the field
+    descriptions above. It is an error to attemp to insert an existing site
+    resource.
 
     :arg list site: new values;
     :arg list type: new values;
@@ -408,11 +413,12 @@ class SiteResources(RESTEntity):
 
   @restcall
   def delete(self, site, type, fqdn):
-    """Delete site resource associations. Site admin can update their own site,
-    global admin can update resources for all the sites. When more than one
-    argument is given, there must be an equal number of arguments for all the
-    parameters. For input validation requirements, see the field descriptions
-    above. It is an error to attempt to delete a non-existent site resource.
+    """Delete site resource associations. Site executive / admin can update
+    their own site, global admin can update resources for all the sites. When
+    more than one argument is given, there must be an equal number of arguments
+    for all the parameters. For input validation requirements, see the field
+    descriptions above. It is an error to attempt to delete a non-existent
+    site resource.
 
     :arg list site: values to delete;
     :arg list type: values to delete;
@@ -447,7 +453,7 @@ class SiteAssociations(RESTEntity):
       validate_strlist('child',  param, safe, RX_SITE)
       validate_lengths(safe, 'parent', 'child')
       for site in safe.kwargs['parent']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
   @restcall
@@ -468,12 +474,13 @@ class SiteAssociations(RESTEntity):
 
   @restcall
   def put(self, parent, child):
-    """Insert new site associations. Parent site admin can update their own
-    site, global admin can update associations for all the sites. When more
-    than one argument is given, there must be an equal number of arguments
-    for all the parameters. For input validation requirements, see the field
-    descriptions above. It is an error to attempt to insert an existing site
-    association pair.
+    """Insert new site associations. Parent site executive can update their own
+    site, global admin can update associations for all the sites. The parent
+    site must be a higher tier level than the child: the children of a Tier-1
+    site must be Tier-2 or lesser sites. When more than one argument is given,
+    there must be an equal number of arguments for all the parameters. For
+    input validation requirements, see the field descriptions above. It is an
+    error to attempt to insert an existing site association pair.
 
     :arg list parent: new values;
     :arg list child: new values;
@@ -482,13 +489,15 @@ class SiteAssociations(RESTEntity):
 
     return self.api.modify("""
       insert into site_association (parent_site, child_site)
-      values ((select id from site where name = :parent),
-              (select id from site where name = :child))
+      select p.id, c.id from site p, site c, tier pt, tier ct
+      where p.name = :parent and pt.id = p.tier
+        and c.name = :child and ct.id = c.tier
+        and ct.pos > pt.pos
       """, parent=parent, child=child)
 
   @restcall
   def delete(self, parent, child):
-    """Delete site associations. Parent site admin can update their own site,
+    """Delete site associations. Parent site executive can update their own site,
     global admin can update associations for all the sites. When more than one
     argument is given, there must be an equal number of arguments for all the
     parameters. For input validation requirements, see the field descriptions

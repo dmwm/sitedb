@@ -1,5 +1,5 @@
 from RESTServer import RESTFrontPage
-import os, re
+import os, re, cjson, SiteDB.Regexps
 
 class FrontPage(RESTFrontPage):
   """SiteDB front page.
@@ -37,13 +37,19 @@ class FrontPage(RESTFrontPage):
       "yui":
       {
         "root": "%s/build/" % os.environ["YUI3_ROOT"],
-        "rx": re.compile(r"^[-a-z0-9]+/[-a-z0-9/]+\.(?:css|js|png|gif)$")
+        "rx": re.compile(r"^[-a-z0-9]+/[-a-z0-9/_]+\.(?:css|js|png|gif)$")
       },
 
       "d3":
       {
         "root": "%s/data/" % os.environ["D3_ROOT"],
         "rx": re.compile(r"^[-a-z0-9]+/[-a-z0-9]+(?:\.min)?\.(?:css|js)$")
+      },
+
+      "xregexp":
+      {
+        "root": "%s/data/xregexp/" % os.environ["XREGEXP_ROOT"],
+        "rx": re.compile(r"^[-a-z0-9]+(?:-min)?\.js$")
       }
     }
 
@@ -51,5 +57,11 @@ class FrontPage(RESTFrontPage):
     if os.path.exists("%s/templates/sitedb-min.html" % roots["sitedb"]["root"]):
       frontpage = "sitedb/templates/sitedb-min.html"
 
+    regexps = dict((name[3:], getattr(SiteDB.Regexps, name).pattern)
+                   for name in dir(SiteDB.Regexps)
+                   if name.startswith("RX_") and name != "RX_PASSWD")
+
     RESTFrontPage.__init__(self, app, config, mount, frontpage, roots,
-                           instances = lambda: app.views["data"]._db)
+                           instances = lambda: app.views["data"]._db,
+                           preamble = "var SITEDB_REGEXPS = %s;\n"
+                                      % cjson.encode(regexps))

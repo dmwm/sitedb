@@ -11,7 +11,7 @@ class WhoAmI(RESTEntity):
     pass
 
   @restcall
-  @tools.expires(secs=86400)
+  @tools.expires(secs=-1)
   def get(self):
     """Return information on the calling user.
 

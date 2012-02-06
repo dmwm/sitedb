@@ -23,14 +23,412 @@
        ><h3>My sites</h3><div id="my-sites"></div
        ><h3>My groups</h3><div id="my-groups"></div
        ><h3>My roles</h3><div id="my-roles"></div
+       ><div id="my-admin" style="display:none"></div
        ><div id="debug-data" style="display:none"><h3>Data</h3></div
-       ><div id="debug-activity" style="display:none"><h3>Activity</h3></div
      ></div
     ></div
     ><div id="content-area" class="yui3-u"
       ><div id="content"></div
     ></div
   ></div
-  ><script type="text/javascript" src="@MOUNT@/static?rest/preamble.js&yui/yui/yui.js&d3/d3/d3.min.js&sitedb/javascript/sprintf.js&sitedb/javascript/utils.js&sitedb/javascript/sitedb-state.js&sitedb/javascript/sitedb-app.js&sitedb/javascript/sitedb-view.js&sitedb/javascript/sitedb-view-start.js&sitedb/javascript/sitedb-view-sites.js&sitedb/javascript/sitedb-view-pledges.js&sitedb/javascript/sitedb-view-people.js&sitedb/javascript/sitedb-view-admin.js&sitedb/javascript/sitedb-start.js"></script
+  ><script type="text/x-template" id="t-view-loading"
+   ><h2>Loading...</h2
+  ></script
+  ><script type="text/x-template" id="t-view-auth-fail"
+   ><h2>Not authorised to <span x-element='what'></span></h2
+  ></script
+  ><script type="text/x-template" id="t-view-no-such"
+   ><h2>No such <span x-element='what'></span></h2
+  ></script
+  ><script type="text/x-template" id="t-view-no-x509"
+   ><h2>Not logged in with X509 certificate</h2
+   ><p>Please <a href='/auth/logout'>log out</a> from your HN account and
+      access this page with X509 certificate you want to associate to your
+      HyperNews account. <a href='/auth/trouble'>Trouble-shooting guide</a>
+      will help you if you tried and failed.</p
+  ></script
+  ><script type="text/x-template" id="t-view-sites-main"
+   ><div x-element='sites' style='width:95%; overflow:auto'
+     ><div x-element='list' style='width:100%;
+        column-width:150px;-moz-column-width:150px;-webkit-column-width:150px;
+        column-gap:10px;-moz-column-gap:10px;-webkit-column-gap:10px'
+     ></div
+   ></div
+   ><div x-element='info' style='width:95%; margin-top:10px'
+     ><div style='width:100%;margin:0 0 10px;padding:5px;border:1px solid #ddd;background-color:#eee'
+       ><h2 x-element='site-head'></h2
+       ><div class='group'
+         ><h3 x-element='names-head'></h3
+         ><table
+          ><tr><td><i>Title</i></td><td x-element='site-title'></td></tr
+          ><tr><td><i>Tier</i></td><td x-element='tier'></td></tr
+          ><tr><td><i>CMS</i></td><td x-element='cms'></td></tr
+          ><tr><td><i>PhEDEx</i></td><td x-element='phedex'></td></tr
+          ><tr><td><i>LCG</i></td><td x-element='lcg'></td></tr
+          ><tr><td><i>Location</i></td><td x-element='location'></td></tr
+          ><tr><td><i>Usage</i></td><td x-element='usage'></td></tr
+          ><tr><td><i>Links</i></td><td x-element='links'></td></tr
+          ><tr><td><i>GOCDB ID</i></td><td x-element='gocdbid'></td></tr
+         ></table
+         ><h3 x-element='assocs-head'></h3
+         ><table
+          ><tr><td><i>Parent</i></td><td x-element='parent'></td></tr
+          ><tr><td><i>Children</i></td><td x-element='children'></td></tr
+         ></table
+       ></div
+       ><div class='group'
+         ><h3 x-element='hosts-head'></h3
+         ><table
+          ><tr><td><i>CEs</i></td><td x-element='ce'></td></tr
+          ><tr><td><i>SEs</i></td><td x-element='se'></td></tr
+         ></table
+       ></div
+       ><div class='group'
+         ><h3 x-element='pledges-head'></h3
+         ><table
+          ><tr><td><i>Quarter</i></td><td align='right' colspan='2'
+            x-element='quarter'></td><td></td></tr
+          ><tr><td><i>Updated</i></td><td align='right' colspan='2'
+            x-element='updated'></td><td></td></tr
+          ><tr><td><i>CPU</i></td><td align='right' x-element='cpu'
+            style='padding-right: .5em'></td><td>kSI2k</td></tr
+          ><tr><td><i>Slots</i></td><td align='right' x-element='jobs'
+            style='padding-right: .5em'></td><td>jobs</td></tr
+          ><tr><td colspan='3'><b>Storage</b></td></tr
+          ><tr><td><i>Disk</i></td><td align='right' x-element='disk'
+            style='padding-right: .5em'></td><td>TB</td></tr
+          ><tr><td><i>Tape</i></td><td align='right' x-element='tape'
+            style='padding-right: .5em'></td><td>TB</td></tr
+          ><tr><td><i>WAN</i></td><td align='right' x-element='wan'
+            style='padding-right: .5em'></td><td>TB</td></tr
+          ><tr><td><i>Local</i></td><td align='right' x-element='local'
+            style='padding-right: .5em'></td><td>TB</td></tr
+          ><tr><td colspan='3'><b>Bandwidth</b></td></tr
+          ><tr><td><i>National</i></td><td align='right' x-element='nren'
+            style='padding-right: .5em'></td><td>Gbps</td></tr
+          ><tr><td><i>OPN</i></td><td align='right' x-element='opn'
+            style='padding-right: .5em'></td><td>Gbps</td></tr
+         ></table
+       ></div
+       ><div class='group'
+         ><h3 x-element='people-head'></h3
+         ><dl x-element='responsibilities'></dl
+       ></div
+     ></div
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-sites-create"
+   ><div style='width:95%;margin:0 0 1em;font-size:1.2em'
+     ><h2>Create new site</h2
+     ><table
+       ><tr><td>Tier</td><td><select x-element='tier'><option>Tier 0</option
+          ><option>Tier 1</option><option selected='selected'>Tier 2</option
+          ><option>Tier 3</option></select></td></tr
+       ><tr><td>Title</td><td><input x-element='title' type='text'
+          placeholder='Colloquial name' /></td></tr
+       ><tr><td>CMS Name</td><td><input x-element='cms' type='text'
+          placeholder='T2_CC_Name' /></td></tr
+       ><tr><td>LCG Name</td><td><input x-element='lcg' type='text'
+          placeholder='Name' /></td></tr
+       ><tr><td>Site Executive</td><td><input x-element='exec' type='text'
+          placeholder='Search person' style='width:25em' /></td></tr
+       ><tr><td>Location</td><td><input x-element='country' type='text'
+          placeholder='City, (State,) Country' /></td></tr
+       ><tr><td>Usage</td><td><select x-element='usage'><option>LCG</option
+          ><option>OSG</option><option>ARC</option><option>other</option
+          ></select></td></tr
+       ><tr><td>URL</td><td><input x-element='url' type='text'
+          placeholder='http://site.cc' /></td></tr
+       ><tr><td>Logo</td><td><input x-element='logo' type='text'
+          placeholder='http://site.cc/logo.png' /></td></tr
+       ><tr><td>GOCDB ID</td><td><input x-element='goc' type='text'
+          placeholder='ID' /></td></tr
+       ><tr><td colspan='2'><button x-element='button' type='button'
+          >Create site</button></td></tr
+     ></table
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-sites-remove"
+   ><h2 x-element='title'></h2
+   ><button x-element='remove' type='button' style='margin-top:1em'
+     >Remove site</button
+  ></script
+  ><script type="text/x-template" id="t-view-sites-names"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Alias</th
+          ><th style='text-align:left'>Name</th></tr></thead
+       ><tbody><tr><td><select x-element='alias'
+          ><option value=''>Select alias</option
+          ><option value='cms'>CMS</option
+          ><option value='phedex'>PhEDEx</option
+          ><option value='lcg'>LCG</option></select></td
+          ><td><input x-element='name' type='text'
+            placeholder='Alias to add' /></td></tr></tbody
+       ><tbody x-element='names'></tbody
+     ></table
+    ></div
+  ></script
+  ><script type="text/x-template" id="t-view-sites-resources"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Resource</th
+          ><th style='text-align:left'>Primary</th
+          ><th style='text-align:left'>Fully qualified host name</th></tr></thead
+       ><tbody><tr><td><select x-element='resource'
+          ><option value=''>Select type</option
+          ><option value='CE'>CE</option
+          ><option value='SE'>SE</option></select></td
+          ><td><input x-element='primary' type='checkbox' /></td
+          ><td><input x-element='name' type='text'
+            placeholder='host.name.tld to add' /></td></tr></tbody
+       ><tbody x-element='fqdns'></tbody
+     ></table
+    ></div
+  ></script
+  ><script type="text/x-template" id="t-view-sites-assocs"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Site name</th></tr></thead
+       ><tbody><tr><td><input x-element='name' type='text'
+            placeholder='Child site to add' /></td></tr></tbody
+       ><tbody x-element='children'></tbody
+     ></table
+    ></div
+  ></script
+  ><script type="text/x-template" id="t-view-people-main"
+   ><div style='margin:auto;padding:0 0 .5em;width:50%;font-size:1.7em'
+     ><input x-element='search' style='width:100%;padding:3px' type='text'
+         title='Search CMS people by name or e-mail address'
+   /></div
+   ><div x-element='count' class='faded'
+         style='margin:auto;width:50%;padding:0 0 1em;text-align:center'
+   ></div
+   ><div x-element='result' style='width:95%;
+      column-width:180px;-moz-column-width:180px;-webkit-column-width:180px;
+      column-gap:10px;-moz-column-gap:10px;-webkit-column-gap:10px;
+      column-rule:1px dotted #ddd;-moz-column-rule:1px dotted #ddd;
+        -webkit-column-rule:1px dotted #ddd;'
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-people-person"
+   ><div style='margin-bottom:1em'
+     ><h2 x-element='title'></h2
+     ><div x-element='details'
+       ><p x-element='dn' class='faded'></p
+       ><p x-element='contact' class='faded'></p
+       ><p x-element='links'></p
+       ><div class='group'><h3>Site Responsibilities</h3
+         ><dl x-element='sites'></dl
+       ></div
+       ><div class='group'><h3>Group Responsibilities</h3
+         ><dl x-element='groups'></dl
+       ></div
+     ></div
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-people-mycert"
+   ><h2>Associate your certificate to a CMS HyperNews account</h2
+   ><table style='font-size:1.2em'><tbody
+     ><tr><td>Certificate</td><td x-element='dn'></td></tr
+     ><tr><td>Account</td><td><input x-element='account'
+        type='text' placeholder='HyperNews login' /></td></tr
+     ><tr><td>Password</td><td><input x-element='password'
+        type='password' placeholder='********' /></td></tr
+     ><tr><td colspan='2'><button x-element='associate'
+        type='button'>Associate</button></td></tr
+   ></tbody></table
+  ></script
+  ><script type="text/x-template" id="t-view-people-remove"
+   ><div style='margin-bottom:1em'
+     ><h2 x-element='title'></h2
+     ><div x-element='details'
+       ><p x-element='dn' class='faded'></p
+       ><p x-element='contact' class='faded'></p
+       ><p x-element='links'></p
+       ><button x-element='remove' type='button'
+          style='margin-top:1em'>Remove</button
+     ></div
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-people-edit"
+   ><div style='width:95%;margin:0 0 1em;font-size:1.2em'
+     ><h2 x-element='title'></h2
+     ><table x-element='form'><tbody
+       ><tr><td>Surname</td><td><input x-element='surname' type='text'
+          placeholder='Bloggs' /></td></tr
+       ><tr><td>Forename</td><td><input x-element='forename' type='text'
+          placeholder='Joe' /></td></tr
+       ><tr><td>Certificate</td><td><input x-element='dn' type='text'
+          placeholder='/DC=abc/DC=def/OU=ghi/OU=jkl/CN=Your Name'
+          style='width:40em' /></td></tr
+       ><tr><td>HyperNews Account</td><td><input x-element='account'
+          type='text' placeholder='Login name' /></td></tr
+       ><tr><td>E-mail</td><td><input x-element='email' type='text'
+          placeholder='you@domain.name' /></td></tr
+       ><tr><td>Primary Phone</td><td><input x-element='phone1'
+          type='text' placeholder='+41-12-345 6789' /></td></tr
+       ><tr><td>Secondary Phone</td><td><input x-element='phone2'
+          type='text' placeholder='+41-98-765 4321' /></td></tr
+       ><tr><td>IM Handle</td><td><input x-element='imname'
+          type='text' placeholder='screenname'
+          />&nbsp;&nbsp;<select x-element='imtype'
+          ><option value=''>Select service</option
+          ><option value='aol'>AIM</option
+          ><option value='gtalk'>Google Talk</option
+          ><option value='msn'>MSN</option
+          ><option value='icq'>ICQ</option
+          ><option value='jabber'>Jabber</option
+          ></select></td></tr
+       ><tr><td colspan='2'><button x-element='update'
+          type='button'>Update</button></td></tr
+     ></tbody></table
+    ></div
+  ></script
+  ><script type="text/x-template" id="t-view-pledges-main"
+   ><h2 x-element='title'></h2
+   ><table style='padding:0 0 1em'
+     ><tr><td>By quarter:</td><td x-element='by-quarter'></td></tr
+     ><tr><td>By country:</td><td x-element='by-country'></td></tr
+     ><tr><td>By Tier-1:</td><td x-element='by-tier1'></td></tr
+   ></table
+   ><table x-element='pledges' id='resources' style='margin:1em 0'></table
+  ></script
+  ><script type="text/x-template" id="t-view-pledges-quarter"
+   ><h2 x-element='title'></h2
+   ><table id='resources' style='margin:1em 0'
+     ><thead
+      ><tr
+       ><th class='left' rowspan='2'>Quarter</th
+       ><th rowspan='2' title='Total processing power available to CMS'
+         >CPU<br />[kSI2k]</th
+       ><th rowspan='2' title='Total processing power available to CMS'
+         >Jobs<br />[slots]</th
+       ><th colspan='4' class='middle' title='Total storage allocated to CMS'
+         >Storage [TB]</th
+       ><th colspan='2' class='middle' title='Expected national and international bandwidth'
+         >Network [Gbps]</th
+       ><th rowspan='2' title='Time the pledge was last updated'
+         >Updated</th
+      ></tr><tr
+       ><th>Tape</th
+       ><th>Disk</th
+       ><th title='Storage available for transfer (PhEDEx)'>WAN</th
+       ><th title='Storage available for local users'>Local</th
+       ><th title='National connection speed'>NREN</th
+       ><th title='OPN international connection speed'>OPN</th
+      ></tr
+     ></thead
+     ><tbody x-element='edit'
+      ><tr
+       ><td><select x-element='quarter'></select></td
+       ><td><input x-element='cpu' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='jobs' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='tape' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='disk' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='wan' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='local' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='nren' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><input x-element='opn' type='text'
+         style='text-align:right;width:3.5em' /></td
+       ><td><button x-element='add' type='button'
+         >Pledge</button></td
+      ></tr
+     ></tbody
+     ><tbody x-element='table'></tbody
+   ></table
+  ></script
+  ><script type="text/x-template" id="t-view-admin-main"
+   ><div class='group'><h2>Roles</h2><table
+     ><thead><tr
+       ><th style='text-align:left'>Name</th
+       ><th style='text-align:right'>Members</th
+       ><th></th
+     ></tr></thead
+     ><tbody x-element='roles'></tbody
+     ><tbody><tr
+       ><td><input x-element='add-role' type='text'
+         placeholder='New role name' style='width:100%'
+        /></td><td></td><td></td
+     ></tr></tbody
+   ></table></div
+   ><div class='group'><h2>Groups</h2><table
+     ><thead><tr
+       ><th style='text-align:left'>Name</th
+       ><th style='text-align:right'>Members</th
+       ><th></th
+     ></tr></thead
+     ><tbody x-element='groups'></tbody
+     ><tbody><tr
+       ><td><input x-element='add-group' type='text'
+         placeholder='New group name' style='width:100%'
+       /></td><td></td><td></td
+     ></tr></tbody
+   ></table></div
+  ></script
+  ><script type="text/x-template" id="t-view-admin-site"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Role</th
+         ><th style='text-align:left'>Member</th
+       ></tr></thead
+       ><tbody><tr><td><select x-element='role' /></td
+         ><td><input x-element='person' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='members'></tbody
+     ></table
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-admin-group"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Role</th
+         ><th style='text-align:left'>Member</th
+       ></tr></thead
+       ><tbody><tr><td><select x-element='role' /></td
+         ><td><input x-element='person' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='members'></tbody
+     ></table
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-admin-role"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Group</th
+         ><th style='text-align:left'>Member</th
+       ></tr></thead
+       ><tbody><tr><td><select x-element='group' /></td
+         ><td><input x-element='group-person' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='group-members'></tbody
+       ><thead><tr><th style='text-align:left'>Site</th
+         ><th style='text-align:left'>Member</th
+       ></tr></thead
+       ><tbody><tr><td><select x-element='site' /></td
+         ><td><input x-element='site-person' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='site-members'></tbody
+     ></table
+   ></div
+  ></script
+  ><script type="text/javascript" src="@MOUNT@/static?rest/preamble.js&yui/yui/yui.js&d3/d3/d3.min.js&sitedb/javascript/sprintf.js&xregexp/xregexp.js&xregexp/xregexp-unicode-base.js&xregexp/xregexp-unicode-categories.js&sitedb/javascript/utils.js&sitedb/javascript/sitedb-state.js&sitedb/javascript/sitedb-app.js&sitedb/javascript/sitedb-view.js&sitedb/javascript/sitedb-view-sites.js&sitedb/javascript/sitedb-view-pledges.js&sitedb/javascript/sitedb-view-people.js&sitedb/javascript/sitedb-view-admin.js&sitedb/javascript/sitedb-start.js"></script
  ></body
 ></html>

@@ -13,7 +13,7 @@ class Pledges(RESTEntity):
   ==================== ========================= ==================================== ====================
   *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
   *date*               date the pledge was made  real, unix epoch time stamp          listed on read
-  *quarter*            quarter                   real, YYYY.QUARTER                   required
+  *quarter*            quarter                   string matching :obj:`.RX_QUARTER`   required
   *cpu*                total cpu capacity, kHS06 real, >= 0                           optional
   *job_slots*          number of job slots       real, >= 0                           optional
   *disk_store*         disk capacity, TB         real, >= 0                           optional
@@ -40,7 +40,7 @@ class Pledges(RESTEntity):
 
     elif method == 'PUT':
       validate_strlist('site',                param, safe, RX_SITE)
-      validate_reallist('quarter',            param, safe, minval = 2009.)
+      validate_strlist('quarter',             param, safe, RX_QUARTER)
       validate_reallist('cpu',                param, safe, minval = 0.)
       validate_reallist('job_slots',          param, safe, minval = 0.)
       validate_reallist('disk_store',         param, safe, minval = 0.)
@@ -54,7 +54,7 @@ class Pledges(RESTEntity):
                        'national_bandwidth', 'opn_bandwidth')
 
       for site in safe.kwargs['site']:
-        authz_match(role=["Global Admin", "Site Admin"],
+        authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
                     group=["global"], site=[site])
 
   @restcall
@@ -85,11 +85,11 @@ class Pledges(RESTEntity):
   def put(self, site, quarter, cpu, job_slots,
           disk_store, tape_store, wan_store, local_store,
           national_bandwidth, opn_bandwidth):
-    """Insert new pledge for *site* and *quarter*. A site admin can insert
-    pledges for their own site, the global admins for all sites. For input
-    validation requirements, see the field descriptions above. When more
-    than one argument is given, there must be equal number of arguments for
-    all the parameters.
+    """Insert new pledge for *site* and *quarter*. A site executive / admin
+    can insert pledges for their own site, the global admins for all sites.
+    For input validation requirements, see the field descriptions above.
+    When more than one argument is given, there must be equal number of
+    arguments for all the parameters.
 
     :arg list site: sites for which to insert pledges;
     :arg list quarter: quarters for which to insert pledges;

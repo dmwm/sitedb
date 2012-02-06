@@ -6,29 +6,46 @@ var People = X.inherit(View, function(Y, gui, rank)
   /** 'None' text material. */
   var _none = "<span class='faded'>(None)</span>";
 
-  /** Flag to indicate if we are in charge of dynamic data. */
-  var _incharge = false;
-
   /** Subscription for history events, to determine who owns search value. */
   var _historyEvent = null;
+
+  /** View master objects. */
+  var _views = new ViewContentSet(Y, {
+    loading: "view-loading",
+    authfail: "view-auth-fail",
+    nosuch: "view-no-such",
+    nox509: "view-no-x509",
+    main: "view-people-main",
+    person: "view-people-person",
+    remove: "view-people-remove",
+    edit: "view-people-edit",
+    mycert: "view-people-mycert"
+  });
 
   /** Invoke view constructor. */
   View.call(this, Y, gui, rank, "People",
             ["whoami", "people", "site-responsibilities",
              "group-responsibilities"]);
 
-  var _search = function(count, result, state, term)
+  /** Respond to search results on people page. Execute the search and
+      fill the result area with people's information. Show just people's
+      names if there are a lot of results, otherwise show inline a little
+      more information for each person. Searches are regexp terms which
+      are matched over forename, surename and email address. */
+  var _search = function(view, state)
   {
     var rx = null;
     var match = [];
+    var term = view.valueOf("search");
     var attrs = [ 'forename', 'surname', 'email' ];
     var instance = state.currentInstance();
     var people = state.people;
 
     if (! people.length)
     {
-      count.setContent("Hey, where'd everybody go?");
-      result.setContent("");
+      view.content("count", "Hey, where'd everybody go?");
+      view.content("result", "");
+      view.render();
       return;
     }
 
@@ -36,9 +53,9 @@ var People = X.inherit(View, function(Y, gui, rank)
       match = people.map(function(p) { return { len: 0, start: 0, person: p } });
     else
     {
-      term = term.replace(/^\s+/, "").replace(/\s+$/, "").replace(/\s+/g, " ");
+      term = term.replace(/\s+/g, " ");
       try { rx = term.split(" ").map(function(t) { return new RegExp(t, "i") }); }
-      catch (e) { result.setContent("No matches"); return; }
+      catch (e) { view.content("result", "No matches"); view.render(); return; }
 
       Y.each(people, function(p) {
         var m, best = { n: 0, len: 0, start: Infinity, person: p };
@@ -65,8 +82,9 @@ var People = X.inherit(View, function(Y, gui, rank)
 
     if (! match.length)
     {
-      count.setContent("Sorry, nobody by that name here.");
-      result.setContent("");
+      view.content("count", "Sorry, nobody by that name here.");
+      view.content("result", "");
+      view.render();
       return;
     }
 
@@ -140,39 +158,122 @@ var People = X.inherit(View, function(Y, gui, rank)
         content += "</div>";
       });
 
-    if (result.getContent() != content)
-      result.setContent(content);
+    view.content("result", content);
+    view.content("count", match.length + " people found");
+    view.render();
+  };
 
-    content = match.length + " people found";
-    if (count.getContent() != content)
-      count.setContent(content);
+  /** Implement editing person's details, including creating a new record. */
+  var _edit = function(isnew, state, person, p)
+  {
+    var view = _views.attach("edit", _self.doc);
+    view.validator("surname", X.rxvalidate(gui.rx.NAME));
+    view.validator("forename", X.rxvalidate(gui.rx.NAME));
+    view.validator("dn", X.rxvalidate(gui.rx.DN));
+    view.validator("account", X.rxvalidate(gui.rx.USER));
+    view.validator("email", X.rxvalidate(gui.rx.EMAIL));
+    view.validator("phone1", X.rxvalidate(gui.rx.PHONE, true));
+    view.validator("phone2", X.rxvalidate(gui.rx.PHONE, true));
+    view.validator("imname", function(imname) {
+      var imtype   = view.valueOf("imtype");
+      var imhandle = ((imtype && imname) ? (imtype + ":" + imname) : "");
+      return gui.rx.IM.test(imhandle);
+    });
+
+    view.on("update", "click", function(e) {
+      var surname  = view.valueOf("surname");
+      var forename = view.valueOf("forename");
+      var dn       = view.valueOf("dn");
+      var account  = view.valueOf("account");
+      var email    = view.valueOf("email");
+      var phone1   = view.valueOf("phone1");
+      var phone2   = view.valueOf("phone2");
+      var imtype   = view.valueOf("imtype");
+      var imname   = view.valueOf("imname");
+      var imhandle = (imtype && imname ? imtype + ":" + imname : "");
+
+      state.modify([{
+        method: (isnew ? "PUT" : "POST"), entity: "people",
+        data: { "surname": surname, "forename": forename, "dn": dn,
+                "username": account, "email": email, "phone1": phone1,
+                "phone2": phone2, "im_handle": imhandle },
+        message: (isnew ? "Inserting" : "Updating") + " record for "
+                 + Y.Escape.html(email)
+      }]);
+    });
+
+    if (p || isnew)
+      view.content("title", (isnew ? "Register" : "Edit")
+                   + " profile for " + person);
+    else
+      view.content("title", "Loading...");
+
+    view.style("form", "display", (p || isnew) ? "" : "none");
+    view.value("surname", (p && p.surname) || "");
+    view.value("forename", (p && p.forename) || "");
+    view.value("dn", (p && p.dn) || "");
+    view.enable("dn", state.isGlobalAdmin());
+    view.value("account", (p && p.username) || "");
+    view.value("email", (p && p.email) || "");
+    view.value("phone1", (p && p.phone1) || "");
+    view.value("phone2", (p && p.phone2) || "");
+    var im = ((p && p.im_handle) || "").match(/^([a-z]+):(.*)$/);
+    if (im)
+    {
+      var imtype = im[1];
+      var imname = im[2];
+      if (imname == "none" || imtype == "none")
+        imtype = imname = "";
+
+      view.value("imtype", imtype);
+      view.value("imname", imname);
+    }
+    else
+    {
+      view.value("imtype", "");
+      view.value("imname", "");
+    }
+    view.content("update", isnew ? "Register" : "Update");
+    view.focus("surname");
+    view.render();
+  };
+
+  /** Action handler for account-certificate association. */
+  var _mycert = function(state, account, password)
+  {
+    if (account && password)
+      state.modify([{
+        method: "POST", entity: "mycert",
+        data: { "username": account, "passwd": password },
+        message: "Associating " + Y.Escape.html(account)
+      }]);
   };
 
   /** Respond to internal navigation. Resets in-charge flag so that we
-      reset search field. */
+      reset search field and other local edit contents. */
   this.prenavigate = function()
   {
-    _incharge = false;
+    _views.loseValues();
   };
 
   /** Attach this view. Adds listener for history event to help decide
       who is in charge of the search edit field contents. If we did not
       trigger the history transition ourselves, then lose the ownership
-      of the search field; otherwise ignore the changes and leave field
-      unchanged. */
+      of the search and other edit fields field; otherwise ignore the
+      changes and leave field unchanged. */
   this.attach = function()
   {
-    _incharge = false;
+    _views.loseValues();
     _historyEvent = Y.on("history:change", function(e) {
       if (e.src != "add" && e.src != "replace")
-        _incharge = false;
+        _views.loseValues();
     });
   };
 
-  /** Detach this view. Detaches the history event listener. */
+  /** Detach this view. Detaches the view and history event listener. */
   this.detach = function()
   {
-    _incharge = false;
+    _views.detach();
     if (_historyEvent)
       _historyEvent.detach();
   };
@@ -185,61 +286,41 @@ var People = X.inherit(View, function(Y, gui, rank)
     _self.title(state, req.query.search && "Search: "+req.query.search, "People");
     _self.loading(state);
 
-    var search = _self.doc.one("#search");
-    var count = _self.doc.one("#search-count");
-    var result = _self.doc.one("#search-result");
-    if (_self.doc.get("children").size() != 3 || ! search || ! result || ! count)
-    {
-      _self.doc.setContent
-        ("<div style='margin:auto;padding:0 0 .5em;width:50%;font-size:1.7em'>"
-         + "<input id='search' style='width:100%;padding:3px' type='text' "
-         + "title='Search CMS people by name or e-mail address' /></div>"
-         + "<div id='search-count' style='margin:auto;width:50%;"
-         + "padding:0 0 1em;text-align:center' class='faded'></div>"
-         + "<div id='search-result' style='width:95%;"
-         + X.multicolumn(180, 10, "1px dotted #ddd")
-         + "'></div>");
-      search = _self.doc.one("#search");
-      count = _self.doc.one("#search-count");
-      result = _self.doc.one("#search-result");
-
-      // Whenever search field changes, grab ownership. We relinquish that
-      // control on history events, and/or if the view is attached/detached.
+    var view = _views.attach("main", _self.doc);
+    view.once(function() {
       var dosearch = null, dohist = null;
-      search.on('valueChange', function(e) {
-        _incharge = true;
-
+      view.on("search", "valueChange", function(e) {
         if (dosearch) dosearch.cancel();
         if (dohist) dohist.cancel();
 
         dohist = Y.later(1000, _self, function() {
-          var term = search.get('value');
+          var term = view.valueOf("search");
           var tail = term ? "?search=" + X.encodeAsPath(term) : "";
-          gui.history.save(gui.history.getPath() + tail);
+          if (tail != window.location.search)
+            gui.history.save(gui.history.getPath() + tail);
         });
 
         dosearch = Y.later(150, _self, function() {
-          _search(count, result, state, search.get('value'));
+          _search(view, state);
         });
       });
-    }
+    });
 
     // If we are not in charge of the search field, i.e. haven't been
     // editing it locally, then force it to synchronise, and put focus
     // on it so the user doesn't need to click on it / tab to it.
-    if (! _incharge)
+    if (! view.incharge("search"))
     {
       var s = req.query.search || "";
-      if (search.get('value') != s)
-        search.set('value', s);
-      search.getDOMNode().focus();
-      _incharge = true;
+      view.value("search", s, true);
+      view.focus("search");
     }
 
     // Make sure search results reflect whatever is the current state.
-    _search(count, result, state, search.get('value'));
+    _search(view, state);
   };
 
+  /** Custom person display for the authenticated user. */
   this.me = function(req)
   {
     var instance = unescape(req.params.instance);
@@ -251,9 +332,9 @@ var People = X.inherit(View, function(Y, gui, rank)
     }
   };
 
+  /** Show more extended information for a single person. */
   this.person = function(req)
   {
-    var content = "";
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
@@ -262,25 +343,33 @@ var People = X.inherit(View, function(Y, gui, rank)
     _self.title(state, p ? p.fullname : person, "People");
     _self.loading(state);
 
+    var view = _views.attach("person", _self.doc);
     if (p)
     {
-      content +=
-        ("<div style='margin-bottom:1em'><h2>"
-         + Y.Escape.html(p.fullname)
-         + (! p.email ? "" : " | " + _self.mailto(p.email))
-         + (! p.username ? "" : " [" + Y.Escape.html(p.username) + "]")
-         + "</h2>"
-         + (! p.dn ? "" : "<p class='faded'>" + Y.Escape.html(p.dn) + "</p>")
-         + "<p class='faded'>"
-         + (! p.phone1 ? "No phone"
-            : Y.Escape.html(p.phone1)
-              + (! p.phone2 ? "" : ", " + Y.Escape.html(p.phone2)))
-         + (! p.im_handle ? "" : " | IM: " + Y.Escape.html(p.im_handle))
-         + "</p></div>");
+      view.style("details", "display", "");
+      view.content("title", Y.Escape.html(p.fullname)
+                   + (! p.email ? "" : " | " + _self.mailto(p.email))
+                   + (! p.username ? "" : " [" + Y.Escape.html(p.username) + "]"));
 
-      content += "<div class='group'><h3>Site Responsibilities</h3><dl>";
+      view.content("dn", p.dn ? Y.Escape.html(p.dn) : "");
+      view.style("dn", "display", p.dn ? "" : "none");
+
+      view.content("contact",
+                   (! p.phone1 ? "No phone"
+                    : Y.Escape.html(p.phone1)
+                      + (! p.phone2 ? "" : ", " + Y.Escape.html(p.phone2)))
+                   + (! p.im_handle ? "" : " | IM: " + Y.Escape.html(p.im_handle)));
+
+      var content = "";
+      if (state.whoami.person == p || state.isGlobalAdmin())
+        content += _self.personLink(instance, p, "Edit...", "/edit");
+      if (state.isGlobalAdmin())
+        content += " | " + _self.personLink(instance, p, "Delete", "/remove");
+      view.content("links", content);
+      view.style("links", "display", content ? "" : "none");
+
+      content = "";
       var roles = Object.keys(p.roles).sort(d3.ascending);
-      var nfound = 0;
       Y.each(roles, function(r) {
         var items = p.roles[r].site;
         if (items.length)
@@ -289,14 +378,10 @@ var People = X.inherit(View, function(Y, gui, rank)
              + items.map(function(s) {
                  return _self.siteLink(instance, s); }).join("<br />")
              + "</dd>");
-        nfound += items.length;
       });
-      if (! nfound)
-        content += "<dt>" + _none + "</dt><dd></dd>";
-      content += "</dl></div>";
+      view.content("sites", content || ("<dt>" + _none + "</dt><dd></dd>"));
 
-      nfound = 0;
-      content += "<div class='group'><h3>Group Responsibilities</h3><dl>";
+      content = "";
       Y.each(roles, function(r) {
         var items = p.roles[r].group;
         if (items.length)
@@ -305,37 +390,178 @@ var People = X.inherit(View, function(Y, gui, rank)
              + items.map(function(g) {
                  return _self.groupLink(instance, g); }).join("<br />")
              + "</dd>");
-        nfound += items.length;
       });
-      if (! nfound)
-        content += "<dt>" + _none + "</dt><dd></dd>";
-      content += "</dl></div></div>";
+      view.content("groups", content || ("<dt>" + _none + "</dt><dd></dd>"));
     }
-    else if (state.complete)
-      content += "<p>No such person.</p>";
+    else
+    {
+      view.content("title", state.complete ? "No such person" : "Loading...");
+      view.style("details", "display", "none");
+    }
 
-    if (_self.doc.getContent() != content)
-      _self.doc.setContent(content);
+    view.render();
   };
 
+  /** Page for global admins to create new people records. */
   this.create = function(req)
   {
-    var state = _self.require.call(_self, req.params.instance);
-    _self.doc.setContent("Database editing not yet supported");
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    _self.title(state, "New person", "People");
+    _self.loading(state);
+
+    if (state.isGlobalAdmin())
+      _edit(true, state, "new person", null);
+    else
+    {
+      var view;
+      if (state.whoami)
+      {
+        view = _views.attach("authfail", _self.doc);
+        view.content("what", "add");
+      }
+      else
+        view = _views.attach("loading", _self.doc);
+      view.render();
+    }
   };
 
+  /** Page for global admins to remove people records. */
   this.remove = function(req)
   {
-    var state = _self.require.call(_self, req.params.instance);
-    _self.doc.setContent("Database editing not yet supported");
+    var view;
+    var person = unescape(req.params.person);
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    var p = ((person in state.peopleByHN) && state.peopleByHN[person])
+            || ((person in state.peopleByMail) && state.peopleByMail[person]);
+    _self.title(state, "Remove", p ? p.fullname : person, "People");
+    _self.loading(state);
+
+    if (p && state.isGlobalAdmin())
+    {
+      view = _views.attach("remove", _self.doc);
+      view.style("details", "display", "");
+      view.content("title", Y.Escape.html(p.fullname)
+                   + (! p.email ? "" : " | " + _self.mailto(p.email))
+                   + (! p.username ? "" : " [" + Y.Escape.html(p.username) + "]"));
+
+      view.content("dn", p.dn ? Y.Escape.html(p.dn) : "");
+      view.style("dn", "display", p.dn ? "" : "none");
+
+      view.content("contact",
+                   (! p.phone1 ? "No phone"
+                    : Y.Escape.html(p.phone1)
+                      + (! p.phone2 ? "" : ", " + Y.Escape.html(p.phone2)))
+                   + (! p.im_handle ? "" : " | IM: " + Y.Escape.html(p.im_handle)));
+
+      view.on("remove", "click", function(e) {
+        state.modify([{
+          method: "DELETE", entity: "people", data: { "email": p.email },
+          invalidate: [ "whoami", "site-responsibilities", "group-responsibilities" ],
+          message: "Removing record for '" + Y.Escape.html(p.fullname) + "'",
+          onsuccess: function(){ gui.history.save("/" + instance + "/people"); }
+        }]);
+      });
+    }
+    else if (state.whoami && ! state.isGlobalAdmin())
+    {
+      view = _views.attach("authfail", _self.doc);
+      view.content("what", "remove");
+    }
+    else if (state.complete)
+    {
+      view = _views.attach("nosuch", _self.doc);
+      view.content("what", "person");
+    }
+    else
+      view = _views.attach("loading", _self.doc);
+
+    view.render();
+  };
+
+  /** Page for global admins and person themselves to edit the record. */
+  this.edit = function(req)
+  {
+    var person = unescape(req.params.person);
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    var p = ((person in state.peopleByHN) && state.peopleByHN[person])
+            || ((person in state.peopleByMail) && state.peopleByMail[person]);
+    _self.title(state, "Edit", p ? p.fullname : person, "People");
+    _self.loading(state);
+
+    if (! state.whoami
+        || ! state.whoami.person
+        || (p && p == state.whoami.person)
+        || (p && state.isGlobalAdmin()))
+      _edit(false, state, (p ? p.fullname : person), p);
+    else if (p && state.whoami)
+    {
+      var view = _views.attach("authfail", _self.doc);
+      view.content("what", "edit");
+      view.render();
+    }
+    else if (state.complete)
+    {
+      var view = _views.attach("nosuch", _self.doc);
+      view.content("what", "person");
+      view.render();
+    }
+    else
+      _edit(false, state, (p ? p.fullname : person), null);
+  };
+
+  /** Page for associating a hypernews account and certificate. */
+  this.mycert = function(req)
+  {
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    var view;
+
+    if (! state.whoami)
+      view = _views.attach("loading", _self.doc);
+    else if (state.whoami.method != "X509Cert")
+      view = _views.attach("nox509", _self.doc);
+    else
+    {
+      view = _views.attach("mycert", _self.doc);
+      view.validator("account", X.rxvalidate(gui.rx.USER));
+      view.validator("password", X.rxvalidate(gui.rx.CPASSWD));
+      view.once(function() {
+        view.node("account").plug(Y.Plugin.AutoComplete, {
+          source: function() { return state.people; },
+          resultTextLocator: function(p) { return p.username || ""; },
+          resultFilters: "startsWith",
+          resultHighlighter: "startsWith",
+          maxResults: 25
+        });
+      });
+
+      view.on("associate", "click", function(e) {
+        _mycert(state, view.valueOf("account"), view.valueOf("password"));
+      });
+
+      view.on("password", "keypress", function(e) {
+        if (e.keyCode == 13)
+          _mycert(state, view.valueOf("account"), view.valueOf("password"));
+      });
+
+      view.content("dn", Y.Escape.html(state.whoami.dn));
+      view.focus("account");
+    }
+
+    view.render();
   };
 
   // Handle history controller state.
+  gui.history.route("/:instance/mycert", this.mycert);
   gui.history.route("/:instance/people", this.main);
   gui.history.route("/:instance/people/me", this.me);
   gui.history.route("/:instance/people/new", this.create);
-  gui.history.route("/:instance/people/delete", this.remove);
   gui.history.route("/:instance/people/:person", this.person);
+  gui.history.route("/:instance/people/:person/edit", this.edit);
+  gui.history.route("/:instance/people/:person/remove", this.remove);
 
   return this;
 });

@@ -64,6 +64,7 @@ var State = function(Y, gui, instance)
     return REST_SERVER_ROOT + "/data/" + _instance + "/" + name;
   };
 
+  /** Sort people into ascending order by surname, forename or e-mail. */
   this.sortPerson = function(a, b)
   {
     return d3.ascending(a.surname, b.surname)
@@ -71,11 +72,13 @@ var State = function(Y, gui, instance)
            || d3.ascending(a.email, b.email);
   };
 
+  /** Sort objects into ascending order by name. */
   this.sortName = function(a, b)
   {
     return d3.ascending(a.name, b.name);
   };
 
+  /** Sort sites into ascending order by canonical name. */
   this.sortSite = function(a, b)
   {
     return d3.ascending(a.canonical_name, b.canonical_name);
@@ -109,12 +112,12 @@ var State = function(Y, gui, instance)
       var p = Y.merge({ fullname: i.email, roles: {}, sites: {}, groups: {} }, i);
       if (p.im_handle)
         p.im_handle = p.im_handle.replace(/^none(:none)*$/gi, "");
-      if (i.surname)
-	p.fullname = i.forename + " " + i.surname;
+      if (p.surname)
+	p.fullname = p.forename + " " + p.surname;
       if (whoami && p.username == whoami.login)
 	whoami.person = p;
-      bymail[i.email] = p;
-      byhn[i.username] = p;
+      bymail[p.email] = p;
+      byhn[p.username] = p;
       people.push(p);
     });
 
@@ -251,7 +254,7 @@ var State = function(Y, gui, instance)
       });
       Y.each(role.group, function(v) {
         Y.each(v, function(p) { members[p.email] = p; });
-        v.sort(_self.sortName);
+        v.sort(_self.sortPerson);
       });
       role.members = Y.Object.values(members);
       role.members.sort(_self.sortPerson);
@@ -348,7 +351,7 @@ var State = function(Y, gui, instance)
     for (var name in _data)
       _data[name].valid = _RELOAD;
 
-    gui.errorReport(10000, file, line, "state", category, message);
+    gui.errorReport(10000, file, line, "state", category, message, true);
   };
 
   /** Handle successfully retrieved data. */
@@ -498,7 +501,7 @@ var State = function(Y, gui, instance)
     {
       var sites = roles[role]["site"];
       for (var i = 0; i < sites.length; ++i)
-	if (sites[i] == group)
+	if (sites[i] == site)
 	  return true;
     }
 
@@ -549,12 +552,251 @@ var State = function(Y, gui, instance)
     return _self;
   };
 
-  /** Force the provided list of state elements to refresh.
+  /** Force the provided list of state elements to refresh immediately. */
   this.refresh = function()
   {
     for (var i = 0; i < arguments.length; ++i)
-      _refresh(name, _data[arguments[i]], _RELOAD);
-  }; */
+    {
+      var name = arguments[i];
+      var obj = _data[name];
+      _refresh(name, obj, _RELOAD);
+    }
+  };
+
+  /** Run a set of update operations. Each operation can have attributes:
+       - method: Required, HTTP method to use: POST/PUT/DELETE
+       - entity: Required, REST entity to operate on
+       - data: Required, dictionary of form parameters to submit
+       - message: Required, message to show while operation is going on
+       - invalidate: Optional, list of other entities to invalidate
+       - onsuccess: Optional, callback to invoke on success.
+
+     The method puts up a modal panel with a "Stop" button to terminate
+     the action, then starts processing each HTTP request. For each one
+     the panel message is updated with op.message, and operation issued.
+     The 'onsuccess' callback, if any, is invoked if the operation succeeds.
+     After all operations have been successfully completed, the panel is
+     removed and all the invalidated entities are forced to reload.
+
+     If an operation fails or the user requests operation to stop, the panel
+     will be updated with the error info and all further processing stopped,
+     and all entities forced to reload from the server.
+
+     Note that this method starts an asynchronous operation and returns
+     before the operations even start running. Make sure all response to
+     successful / failed operation is handled in callbacks, not on return
+     of this call! */
+  this.modify = function(updates)
+  {
+    var panel, req, aborted = false, cur = -1, u, invalid = {};
+    var _err, _stop, _ok, _fail, _exec, _next, _last;
+    var io = new Y.IO({ emitFacade: true });
+
+    // Handle errors. This is like _error(), but reports into the modal
+    // panel, not the message overlay area.
+    _err = function(category, message, id)
+    {
+      _abort();
+      for (var name in _data)
+        _data[name].valid = _RELOAD;
+
+      if (id) message += "; server error id: " + id;
+      panel.set("bodyContent",
+                gui.errorReport(0, "(modify)", 0, "state",
+                                category, message, false));
+      panel.set("buttons",
+                [{ value: "Close", section: Y.WidgetStdMod.FOOTER,
+                   action: function(e) { e.preventDefault(); panel.hide(); }}]);
+      panel.render();
+    };
+
+    // Respond to "Stop" button clicks. Abort any pending XHR request
+    // and hide the panel. The XHR event handler will do the rest.
+    _stop = function(e)
+    {
+      e.preventDefault();
+      if (req) req.abort();
+      panel.hide();
+    };
+
+    // Respond to successful XHR requests, much like _success() does for
+    // GET requests. If the request completed truly successfully recurse
+    // to process the next update request, or if there is none, finish
+    // things off. Note the mutual recursion with _next/_exec() as we
+    // cannot run things in a loop because everything is asynchronous.
+    _ok = function(e)
+    {
+      try
+      {
+        var o = e.data;
+        var ctype = o.getResponseHeader("Content-Type");
+        if (o.status != 200)
+        {
+          if (u.entity in _data)
+            _data[u.entity].node.setAttribute("class", "invalid");
+          _err("bad-status", "Internal error while issuing "
+               + Y.Escape.html(u.method) + " to '" + Y.Escape.html(u.entity)
+               + "': success handler called with status code " + o.status
+               + " != 200 ('" + Y.Escape.html(o.statusText) + "')",
+               o.getResponseHeader("X-Error-ID"));
+          _last();
+        }
+        else if (ctype != "application/json")
+        {
+          if (u.entity in _data)
+            _data[u.entity].node.setAttribute("class", "invalid");
+          _err("bad-status", "Internal error while issuing "
+               + Y.Escape.html(u.method) + " to '" + Y.Escape.html(u.entity)
+               + "': expected 'application/json' reply, got '"
+               + Y.Escape.html(ctype) + "'");
+          _last();
+        }
+        else
+        {
+          if (u.onsuccess)
+            u.onsuccess();
+          _next();
+        }
+      }
+      catch(err)
+      {
+        if (u.entity in _data)
+          _data[u.entity].node.setAttribute("class", "error");
+        var fileName = (err.fileName ? err.fileName.replace(/.*\//, "") : "(unknown)");
+        var lineNumber = (err.lineNumber ? err.lineNumber : 0);
+        var fileLoc = Y.Escape.html(fileName) + lineNumber;
+        _error(fileName, lineNumber, "exception", "An exception '"
+               + Y.Escape.html(err.name) + "' was raised during state modify: "
+               + Y.Escape.html(err.message));
+        _last();
+      }
+    };
+
+    // Respond to failures in XHR requests, much like _failure() does for
+    // GET requests. Try our best to produce somewhat useful error message
+    // into the panel, including any server-provided error info if any.
+    //
+    // If the failure was simply 'abort' don't report errors but force
+    // everything to reload. Otherwise update the panel with the error
+    // message, force everything to reload, and quit processing more.
+    //
+    // Note that this returns out of the 'modify' chain and page will get
+    // update notifications underneath, but the user needs to click on
+    // "Close" to interact with the page. This is so the error does not
+    // get lost, as it would if we used the transient message overlay.
+    _fail = function(e)
+    {
+      var o = e.data, appcode = 0, detail = null, errinfo = null, errid = null;
+      try
+      {
+        appcode = o.getResponseHeader("X-Rest-Status");
+        detail  = o.getResponseHeader("X-Error-Detail");
+        errinfo = o.getResponseHeader("X-Error-Info");
+        errid   = o.getResponseHeader("X-Error-ID");
+        appcode = appcode && parseInt(appcode);
+      }
+      catch (_)
+      {
+        // Ignore errors.
+      }
+
+      if (! detail)
+        detail = "SiteDB server responded " + Y.Escape.html(o.statusText)
+                 + " (HTTP status " + o.status + ")";
+
+      if (errinfo)
+        detail += ": " + errinfo;
+
+      if (appcode)
+        detail += ", server error code " + appcode;
+
+      detail += " while issuing " + Y.Escape.html(u.method)
+                + " to '" + Y.Escape.html(u.entity) + "'";
+
+      if (u.entity in _data)
+        _data[u.entity].node.setAttribute("class", "invalid");
+
+      if (o.status == 0 && o.statusText == "abort")
+        for (var name in _data)
+          _data[name].valid = _RELOAD;
+      else if (appcode)
+        _err("app-fail", detail, errid);
+      else if (o.status == 403)
+        _err("permission", "Permission denied. " + detail, errid);
+      else if (o.status == 400)
+        _err("data-fail", "Invalid data. " + detail, errid);
+      else if (o.status == 500)
+        _err("exec-fail", "Operation failed. " + detail, errid);
+      else if (o.status == 503 || o.status == 504)
+        _err("unavailable", "Service unavailable. " + detail, errid);
+      else
+        _err("comm-error", "Communication failure. " + detail, errid);
+
+      _last();
+    };
+
+    // Start executing the current operation in 'updates'.
+    _exec = function()
+    {
+      u = updates[cur];
+      if (u.entity in _data)
+      {
+        invalid[u.entity] = 1;
+        _data[u.entity].node.setAttribute("class", "pending");
+      }
+      Y.each(u.invalidate || [], function(i) { invalid[i] = 1; });
+      panel.set("bodyContent", u.message);
+
+      var headers = { "Accept": "application/json" };
+      var param = { data: u.data, on: { success: _ok, failure: _fail },
+                    context: this, method: u.method, sync: false,
+                    timeout: null, headers: headers };
+      if (u.method == "DELETE")
+      {
+        // See http://yuilibrary.com/projects/yui3/ticket/2530091.
+        // YUI3 will convert 'DELETE' into having URL arguments, while
+        // server requires data in body. This hack hides data payload
+        // from Y.IO and sends it manually in the io:start event, where
+        // e.data has the XHR object when using 'eventFacade: true' config.
+        delete param.data;
+        headers["Content-Type"]
+          = "application/x-www-form-urlencoded; charset=UTF-8";
+        param.on.start = function(e) {
+          e.data.send(Y.QueryString.stringify(u.data));
+          e.data.send = function() {};
+        };
+      }
+      req = io.send(_url(u.entity), param);
+    };
+
+    // Process the next operation in 'updates'. If we've reached the end
+    // of the list, finish off, otherwise start executing the next one.
+    _next = function()
+    {
+      if (++cur == updates.length)
+        panel.hide(), _last();
+      else
+        _exec();
+    };
+
+    // Finish off processing: force all invalidated data to reload.
+    _last = function()
+    {
+      Y.each(Y.Object.keys(invalid), function(i) {
+        _refresh(i, _data[i], _RELOAD);
+      });
+    };
+
+    // Put up the panel and start running requests.
+    panel = new Y.Panel({
+      bodyContent: updates[0].message, render: "#state-modify",
+      width: "40%", centered: true, modal: true, zIndex: 10,
+      buttons: [{ value: "Stop", section: Y.WidgetStdMod.FOOTER,
+                  action: _stop }]
+    });
+
+    _next();
+  };
 
   /** Get the current instance. */
   this.currentInstance = function()

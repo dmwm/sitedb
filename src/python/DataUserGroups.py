@@ -3,6 +3,7 @@ from SiteDB.RESTAuth import authz_match
 from SiteDB.RESTTools import tools
 from SiteDB.RESTValidation import *
 from SiteDB.Regexps import *
+from cherrypy import HTTPError
 
 class UserGroups(RESTEntity):
   """REST entity for group privilege assocations.
@@ -22,7 +23,11 @@ class UserGroups(RESTEntity):
       validate_strlist('user_group', param, safe, RX_LABEL)
       validate_strlist('role', param, safe, RX_LABEL)
       validate_lengths(safe, 'email', 'user_group', 'role')
-      authz_match(role=["Global Admin"], group=["global"])
+      for group in safe.kwargs['user_group']:
+        try:
+          authz_match(role=["Global Admin"], group=["global"])
+        except HTTPError:
+          authz_match(role=["Global Admin", "Admin"], group=[group])
 
   @restcall
   @tools.expires(secs=300)
@@ -43,11 +48,12 @@ class UserGroups(RESTEntity):
 
   @restcall
   def put(self, email, user_group, role):
-    """Insert new privilege associations. The caller needs to have global
-    admin privileges. When more than one argument is given, there must be
-    an equal number of arguments for all the parameters. For input
-    validation requirements, see the field descriptions above. It is an
-    error to attempt to insert an existing association triplet.
+    """Insert new privilege associations. The caller needs to be global admin
+    in the global group, or global admin or admin in the group being changed.
+    When more than one argument is given, there must be an equal number of
+    arguments for all the parameters. For input validation requirements, see
+    the field descriptions above. It is an error to attempt to insert an
+    existing association triplet.
 
     :arg list email: new values;
     :arg list user_group: new values;
@@ -64,11 +70,12 @@ class UserGroups(RESTEntity):
 
   @restcall
   def delete(self, email, user_group, role):
-    """Delete privilege associations. The caller needs to have global admin
-    privileges. When more than one argument is given, there must be an equal
-    number of arguments for all the parameters. For input validation
-    requirements, see the field descriptions above. It is an error to attempt
-    to delete a non-existent association triplet.
+    """Delete privilege associations. The caller needs to be global admin
+    in the global group, or global admin or admin in the group being changed.
+    When more than one argument is given, there must be an equal number of
+    arguments for all the parameters. For input validation requirements, see
+    the field descriptions above. It is an error to attempt to delete a
+    non-existent association triplet.
 
     :arg list email: values to delete;
     :arg list user_group: values to delete;

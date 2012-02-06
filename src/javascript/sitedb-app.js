@@ -1,5 +1,9 @@
 var SiteDB = function(Y, views, debug)
 {
+  // Patch up for old browsers.
+  if (! Object.keys)
+    Object.keys = Y.Object.keys;
+
   // Myself.
   var _gui = this;
 
@@ -39,15 +43,14 @@ var SiteDB = function(Y, views, debug)
   // History controller.
   this.history = new Y.Controller({ root: REST_SERVER_ROOT });
 
+  // Regexps, converted from SITEDB_REGEXPS, plus a couple static ones.
+  this.rx = { FLOAT: new XRegExp("^[0-9]+(\\.[0-9]*)?$"),
+              INT: new XRegExp("^[0-9]+$") };
+
   /** Return the current view. */
   this.view = function()
   {
     return _view;
-  };
-
-  this.messageText = function()
-  {
-    return _messages.innerText.replace(/\s+/g, " ");
   };
 
   /** Show a message @a msg in the overlay area for @a timeout milliseconds.
@@ -63,27 +66,22 @@ var SiteDB = function(Y, views, debug)
       _messagesTO.cancel();
 
     _messagesTO = Y.later(timeout, _gui, _gui.hideMessage);
-    _messages.getDOMNode().className = type;
-    _messages.setContent(msg);
-    _messages.setStyle("display", "");
+    X.applyContentStyle(_messages, type, msg, "display", "");
   };
 
   /** Hide and empty the message overlay, if any. */
   this.hideMessage = function()
   {
-    if (_messages.getStyle("display") != "none")
-      _messages.setStyle("display", "none");
-
-    if (_messages.getContent() != "")
-      _messages.setContent("");
+    X.applyContentStyle(_messages, "", "", "display", "none");
   };
 
   /** Report an error. Displays the error message in the overlay
-      area with a link to report the issue in trac, plus sends the
-      message automatically to the server as problem feedback. Both
-      the server feedback and trac ticket link are given unique id
-      which can be used to identify this specific issue in logs. */
-  this.errorReport = function(timeout, file, line, origin, category, message)
+      area with a link to report the issue in trac if @a show, plus
+      sends the message automatically to the server as problem
+      feedback. Returns the full message. Both the server feedback
+      and trac ticket link are given unique id which can be used to
+      identify this specific issue in logs. */
+  this.errorReport = function(timeout, file, line, origin, category, message, show)
   {
     var errid = X.randomid();
     var emsg = X.encodeAsPath(message);
@@ -103,8 +101,10 @@ var SiteDB = function(Y, views, debug)
               + "newticket?component=SiteDB&amp;summary=" + label + "&amp;"
               + "description=" + emsg + "' target='_new'>on trac</a>.)";
 
-    _gui.displayMessage(timeout, "alert", msg);
+    if (show)
+      _gui.displayMessage(timeout, "alert", msg);
     try { Y.io(url); } catch (e) { if (console && console.log) console.log(url); }
+    return msg;
   };
 
   /** Page error handler. Automatically reports bugs to server and
@@ -113,7 +113,7 @@ var SiteDB = function(Y, views, debug)
   {
     _gui.errorReport(10000, url, line, "page", "exception",
                      "Internal error while rendering this page: "
-                     + msg.toString().replace(/\s+/g, " "));
+                     + msg.toString().replace(/\s+/g, " "), true);
     _gui.view().error();
     return true;
   };
@@ -166,7 +166,6 @@ var SiteDB = function(Y, views, debug)
 
     // Maybe show debug menus.
     Y.one("#debug-data").setStyle("display", debug ? "" : "none");
-    //Y.one("#debug-activity").setStyle("display", debug ? "" : "none");
 
     // Refresh side bar.
     this.updateSidebar();
@@ -271,8 +270,8 @@ var SiteDB = function(Y, views, debug)
 
     // Fill in personal information.
     if (_state.whoami)
-      content += ("<p><a class='internal' href='"
-                  + REST_SERVER_ROOT + "/" + instance + "/people/me'>"
+      content += ("<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
+                  + X.encodeAsPath(instance) + "/people/me'>"
                   + Y.Escape.html(_state.whoami.name) + "</a></p>");
 
     if (p)
@@ -296,15 +295,19 @@ var SiteDB = function(Y, views, debug)
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
-    Y.one("#me").setContent(content);
+    content += "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
+               + X.encodeAsPath(instance) + "/mycert'>"
+               + "Update certificate</a></p>";
+
+    X.applyContent(Y.one("#me"), content);
 
     // Fill in site information.
     content = "";
     if (p)
     {
-      var sites = Object.keys(_state.whoami.person.sites).sort();
+      var sites = Object.keys(p.sites).sort();
       Y.each(sites, function(name) {
-        var s = _state.whoami.person.sites[name];
+        var s = p.sites[name];
 	content += ("<p>" + _view.siteLink(instance, s) + "</p>");
       });
 
@@ -314,13 +317,13 @@ var SiteDB = function(Y, views, debug)
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
-    Y.one("#my-sites").setContent(content);
+    X.applyContent(Y.one("#my-sites"), content);
 
     // Fill in group information.
     content = "";
     if (p)
     {
-      Y.each(Object.keys(_state.whoami.person.groups).sort(), function(g) {
+      Y.each(Object.keys(p.groups).sort(), function(g) {
         content += ("<p>" + _view.groupLink(instance, _state.groupsByName[g]) + "</p>");
       });
 
@@ -330,13 +333,13 @@ var SiteDB = function(Y, views, debug)
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
-    Y.one("#my-groups").setContent(content);
+    X.applyContent(Y.one("#my-groups"), content);
 
     // Fill in role information.
     content = "";
     if (p)
     {
-      Y.each(Object.keys(_state.whoami.person.roles).sort(), function(r) {
+      Y.each(Object.keys(p.roles).sort(), function(r) {
         content += ("<p>" + _view.roleLink(instance, _state.rolesByTitle[r]) + "</p>");
       });
 
@@ -346,16 +349,45 @@ var SiteDB = function(Y, views, debug)
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
-    Y.one("#my-roles").setContent(content);
+    X.applyContent(Y.one("#my-roles"), content);
+
+    // If this is a global admin, add links for site/person creation.
+    var display = "none";
+    if (_state.isGlobalAdmin())
+    {
+      display = "";
+      content = "<h3>Administration</h3>"
+                + "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
+                + X.encodeAsPath(instance) + "/people/new'>"
+                + "Create person</a></p>"
+                + "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
+                + X.encodeAsPath(instance) + "/sites/new'>"
+                + "Create site</a></p>";
+    }
+
+    X.applyContentStyle(Y.one("#my-admin"), "", content, "display", display);
   };
 
+  // If not in debug mode, capture errors and report them to server.
   if (! debug)
     window.onerror = _gui.pageErrorHandler;
+
+  // Convert SITEDB_REGEXPS into this.rx. Nuke (?u) and map [\w] into
+  // [\p{L}\p{N}\p{Pc}\p{M}]; it's assumed \w doesn't appear outside [] and
+  // (?x) flags may only occur at the beginning of the regexp. This uses
+  // XRegExp utilities because native RegExp is too limited.
+  Y.each(SITEDB_REGEXPS, function(pattern, name) {
+    pattern = pattern.replace(/^(\(\?([a-z]+)\))/, function(s) {
+                               return s.replace("u", ""); })
+              .replace(/\\w/g, "\\p{L}\\p{N}\\p{Pc}\\p{M}");
+    _gui.rx[name] = XRegExp(pattern);
+  });
 
   // Add views.
   for (var view = 0; view < views.length; ++view)
     _views.push(new views[view](Y, this, view));
 
-  this.start("/" + REST_INSTANCES[0].id + "/start");
+  // Start up.
+  this.start("/" + REST_INSTANCES[0].id + "/sites");
   return this;
 };

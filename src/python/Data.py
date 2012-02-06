@@ -1,4 +1,5 @@
 from SiteDB.RESTServer import DatabaseRESTApi
+from SiteDB.DataCertificate import *
 from SiteDB.DataWhoAmI import *
 from SiteDB.DataRoles import *
 from SiteDB.DataGroups import *
@@ -18,6 +19,7 @@ class Data(DatabaseRESTApi):
     :arg str mount: API URL mount point; passed to all entities."""
     DatabaseRESTApi.__init__(self, app, config, mount)
     self._add({ "whoami":                 WhoAmI(app, self, config, mount),
+                "mycert":                 Certificate(app, self, config, mount),
                 "roles":                  Roles(app, self, config, mount),
                 "groups":                 Groups(app, self, config, mount),
                 "people":                 People(app, self, config, mount),

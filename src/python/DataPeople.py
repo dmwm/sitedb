@@ -40,9 +40,12 @@ class People(RESTEntity):
       validate_strlist('im_handle', param, safe, RX_IM)
       validate_lengths(safe, 'email', 'forename', 'surname', 'dn',
                        'username', 'phone1', 'phone2', 'im_handle')
+
+      mydn = cherrypy.request.user['dn']
       me = cherrypy.request.user['login']
-      for user in safe.kwargs['username']:
-        user == me or authz_match(role=["Global Admin"], group=["global"])
+      for user, dn in zip(safe.kwargs['username'], safe.kwargs['dn']):
+        (method == 'POST' and user == me and dn == mydn) or \
+          authz_match(role=["Global Admin"], group=["global"])
 
     elif method == 'DELETE':
       validate_strlist('email', param, safe, RX_EMAIL)
@@ -65,10 +68,11 @@ class People(RESTEntity):
   @restcall
   def post(self, email, forename, surname, dn, username, phone1, phone2, im_handle):
     """Update the information for a person identified by `email`. A person
-    can update their own record, global admins the info for anyone. For input
-    validation requirements, see the field descriptions above. When more than
-    one argument is given, there must be equal number of arguments for all the
-    parameters. It is an error to attempt to update a non-existent `email`.
+    can update their own record except not alter the DN information, global
+    admins the info for anyone. For input validation requirements, see the
+    field descriptions above. When more than one argument is given, there
+    must be equal number of arguments for all the parameters. It is an error
+    to attempt to update a non-existent `email`.
 
     :arg list email: accounts to update;
     :arg list forename: new values;
@@ -95,11 +99,11 @@ class People(RESTEntity):
 
   @restcall
   def put(self, email, forename, surname, dn, username, phone1, phone2, im_handle):
-    """Insert new people. A person can insert their own record, global admins
-    the info for anyone. For input validation requirements, see the field
-    descriptions above. When more than one argument is given, there must be
-    equal number of arguments for all the parameters. It is an error to
-    attempt to insert an already existing `email`.
+    """Insert new people. The caller needs to have global admin privileges.
+    For input validation requirements, see the field descriptions above. When
+    more than one argument is given, there must be equal number of arguments
+    for all the parameters. It is an error to attempt to insert an already
+    existing `email`.
 
     :arg list email: accounts to insert;
     :arg list forename: new values;
@@ -111,7 +115,12 @@ class People(RESTEntity):
     :arg list im_handle: new values.
     :returns: a list with a dict in which *modified* gives number of objects
               inserted into the database, which is always *len(email).*"""
-    # FIXME: insert into user_passwd (username, passwd) values (:username, '*')
+    c, _ = self.api.executemany("""
+      insert into user_passwd (username, passwd)
+      values (:username, '*')
+      """, self.api.bindmap(username = username))
+    self.api.rowstatus(c, len(username))
+
     return self.api.modify("""
       insert into contact
       (id, email, forename, surname, dn, username, phone1, phone2, im_handle)
@@ -122,7 +131,7 @@ class People(RESTEntity):
 
   @restcall
   def delete(self, email):
-    """Delete people records. Only global admin can delete people records.
+    """Delete people records. The caller needs to have global admin privileges.
     For input validation requirements, see the field descriptions above.
     It is an error to attempt to delete a non-existent `email`.
 
