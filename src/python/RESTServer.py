@@ -1526,9 +1526,12 @@ class DBConnectionPool(Thread):
   def _disconnect(self, dbh):
     """Action handler to discard the connection entirely."""
     try:
-      # Assert internal consistency invariants.
-      assert dbh not in self.inuse
+      # Assert internal consistency invariants; the handle may be
+      # marked for use in case it's discarded with put(..., True).
       assert dbh not in self.idle
+
+      try: self.inuse.remove(dbh)
+      except ValueError: pass
 
       # Close the connection.
       s = self.dbspec
