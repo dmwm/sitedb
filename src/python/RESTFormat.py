@@ -104,8 +104,10 @@ class XMLFormat(RESTFormat):
     """Render an object `obj` into XML."""
     if isinstance(obj, type(None)):
       result = ""
-    elif isinstance(obj, (str, int, float, bool)):
-      result = xml.sax.saxutils.escape(str(obj).encode("utf-8"))
+    elif isinstance(obj, (unicode, str)):
+      result = xml.sax.saxutils.escape(obj).encode("utf-8")
+    elif isinstance(obj, (int, float, bool)):
+      result = xml.sax.saxutils.escape(str(obj)).encode("utf-8")
     elif isinstance(obj, dict):
       result = "<dict>"
       for k, v in obj.iteritems():
