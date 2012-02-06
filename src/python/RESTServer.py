@@ -15,6 +15,12 @@ _METHODS = ('GET', 'HEAD', 'POST', 'PUT', 'DELETE')
 #: Regexp for censoring passwords out of SQL statements before logging them.
 _RX_CENSOR = re.compile(r"(identified by) \S+", re.I)
 
+#: MIME types which are compressible.
+_COMPRESSIBLE = [ 'text/html',       'text/html; charset=utf-8',
+                  'text/plain',      'text/plain; charset=utf-8',
+                  'text/css',        'text/css; charset=utf-8',
+                  'text/javascript', 'text/javascript; charset=utf-8' ]
+
 #: Type alias for arguments passed to REST validation methods, consisting
 #: of `args`, the additional path arguments, and `kwargs`, the query
 #: arguments either from the query string or body (but not both).
@@ -216,9 +222,9 @@ class RESTFrontPage:
         raise HTTPError(404, "No such file")
 
       # Concatenate contents and set content type based on name suffix.
-      ctypemap = { "js": "text/javascript",
-                   "css": "text/css",
-                   "html": "text/html" }
+      ctypemap = { "js": "text/javascript; charset=utf-8",
+                   "css": "text/css; charset=utf-8",
+                   "html": "text/html; charset=utf-8" }
       suffix = path.rsplit(".", 1)[-1]
       if suffix in ctypemap:
         if not ctype:
@@ -251,7 +257,7 @@ class RESTFrontPage:
     return result
 
   @expose
-  @tools.gzip()
+  @tools.gzip(compress_level=9, mime_types=_COMPRESSIBLE)
   def static(self, *args, **kwargs):
     """Serve static assets.
 
@@ -280,7 +286,7 @@ class RESTFrontPage:
     return ""
 
   @expose
-  @tools.gzip()
+  @tools.gzip(compress_level=9, mime_types=_COMPRESSIBLE)
   def default(self, *args, **kwargs):
     """Generate the front page, as documented in :meth:`_serve`. The
     JavaScript will actually work out what to do with the rest of the
