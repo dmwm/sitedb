@@ -6,10 +6,9 @@ from SiteDB.RESTValidation import validate_num, validate_str
 from SiteDB.RESTError import InvalidObject
 from SiteDB.RESTFormat import RawFormat
 from SiteDB.RESTTools import tools
+import SiteDB.RESTTest as T
 import cjson, re, zlib
 
-server = None
-authz_key = None
 gif_bytes = ('GIF89a\x01\x00\x01\x00\x82\x00\x01\x99"\x1e\x00\x00\x00\x00\x00'
              '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
              '\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x02\x03\x02\x08\t\x00;')
@@ -64,7 +63,7 @@ class Root(RESTApi):
 
 class Tester(helper.CPWebCase):
   def _test_accept_ok(self, fmt, page = "/test/simple", inbody = None):
-    h = fake_authz_headers(authz_key.data) + [("Accept", fmt)]
+    h = fake_authz_headers(T.test_authz_key.data) + [("Accept", fmt)]
     self.getPage(page, headers = h)
     self.assertStatus("200 OK")
     if fmt.find("*") >= 0:
@@ -82,7 +81,7 @@ class Tester(helper.CPWebCase):
 
   def _test_accept_fail(self, fmt, page="/test/simple",
 		        avail="application/json, application/xml"):
-    h = fake_authz_headers(authz_key.data) + [("Accept", fmt)]
+    h = fake_authz_headers(T.test_authz_key.data) + [("Accept", fmt)]
     self.getPage(page, headers = h)
     self.assertStatus("406 Not Acceptable")
     self.assertHeader("X-REST-Status", "201")
@@ -123,7 +122,7 @@ class Tester(helper.CPWebCase):
     self._test_accept_fail("image/png")
 
   def test_simple_json(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/simple", headers = h)
     self.assertStatus("200 OK")
@@ -136,7 +135,7 @@ class Tester(helper.CPWebCase):
     assert b["result"][0] == "foo"
 
   def test_simple_json_deflate(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     h.append(("Accept-Encoding", "deflate"))
     self.getPage("/test/simple", headers = h)
@@ -152,7 +151,7 @@ class Tester(helper.CPWebCase):
     assert b["result"][0] == "foo"
 
   def test_multi_nothrow(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/multi", headers = h)
     self.assertStatus("200 OK")
@@ -169,7 +168,7 @@ class Tester(helper.CPWebCase):
       assert b["result"][i][1] == i
 
   def test_multi_throw0(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/multi?lim=0", headers = h)
     self.assertStatus(400)
@@ -180,7 +179,7 @@ class Tester(helper.CPWebCase):
     self.assertHeader("X-Error-ID")
 
   def test_multi_throw5a(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/multi?lim=5&etag=x", headers = h)
     self.assertStatus("200 OK")
@@ -197,7 +196,7 @@ class Tester(helper.CPWebCase):
       assert b["result"][i][1] == i
 
   def test_multi_throw5b(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/multi?lim=5", headers = h)
     self.assertStatus(400)
@@ -208,7 +207,7 @@ class Tester(helper.CPWebCase):
     self.assertHeader("X-Error-ID")
 
   def test_multi_throw10(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     self.getPage("/test/multi?lim=10&etag=x", headers = h)
     self.assertStatus("200 OK")
@@ -225,9 +224,8 @@ class Tester(helper.CPWebCase):
       assert b["result"][i][1] == i
 
 def setup_server():
-  global server, authz_key
   srcfile = __file__.split("/")[-1].split(".py")[0]
-  server, authz_key = setup_test_server(srcfile, "Root")
+  setup_test_server(srcfile, "Root")
   #cpconfig.update({"log.screen": True})
 
 if __name__ == '__main__':

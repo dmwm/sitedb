@@ -1,12 +1,10 @@
 from cherrypy.test import test, webtest, helper
 from SiteDB.RESTTest import setup_test_server, fake_authz_headers
 from SiteDB.RESTServer import RESTApi, RESTEntity, restcall
-from cherrypy import expose, engine, config as cpconfig
+from cherrypy import expose, engine, process, config as cpconfig
 from threading import Thread, Condition
+import SiteDB.RESTTest as T
 import time, random
-
-server = None
-authz_key = None
 
 class Task(Thread):
   """A pseudo-task which runs in a separate thread. Provides standard
@@ -16,12 +14,14 @@ class Task(Thread):
 
   def __init__(self):
     Thread.__init__(self, name = "Task")
-    engine.subscribe("start", self.start)
-    engine.subscribe("stop", self.stop)
     self._cv = Condition()
     self._status = {}
     self._stopme = False
-    self.daemon = True
+    engine.subscribe("stop", self.stop)
+    if engine.state == process.wspbus.states.STOPPED:
+      engine.subscribe("start", self.start)
+    else:
+      self.start()
 
   def status(self):
     """Get the daemon status. Returns dictionary of time stamps of the
@@ -36,7 +36,7 @@ class Task(Thread):
       self._cv.notifyAll()
 
   def run(self):
-    """Run the task thread work routine. This just sleeps random [0,5]
+    """Run the task thread work routine. This just sleeps random [0,.5]
     seconds, and marks the time into the status dictionary, of course
     all in a thread-safe manner."""
     n = 0
@@ -47,7 +47,7 @@ class Task(Thread):
           self._status = {}
           n = 0
         self._status[str(n)] = time.time()
-        self._cv.wait(random.random() * 5)
+        self._cv.wait(random.random() * 0.5)
 
 class Status(RESTEntity):
   """REST entity to retrieve the status of running tasks."""
@@ -83,18 +83,17 @@ class TaskAPI(RESTApi):
 class TaskTest(helper.CPWebCase):
   """Client to verify :class:`TaskAPI` works."""
   def test(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     h.append(("Accept", "application/json"))
     for _ in xrange(0, 10):
       self.getPage("/test/status", headers=h)
       print self.body
-      time.sleep(4)
+      time.sleep(.3)
 
 def setup_server():
   """Set up this test case."""
-  global server, authz_key
   srcfile = __file__.split("/")[-1].split(".py")[0]
-  server, authz_key = setup_test_server(srcfile, "TaskAPI")
+  setup_test_server(srcfile, "TaskAPI")
   #cpconfig.update({"log.screen": True})
   #print server.config
 

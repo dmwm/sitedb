@@ -4,6 +4,9 @@ from SiteDB.RESTMain import RESTMain
 from SiteDB.RESTAuth import authz_canonical
 from WMCore.Configuration import Configuration
 
+#: The key set up by setup_test_server().
+test_authz_key = None
+
 def fake_authz_headers(hmac_key, method = 'HNLogin',
 		       login = 'test', name = 'Test User',
 		       dn = None, roles = {}):
@@ -69,14 +72,17 @@ def setup_test_server(module_name, class_name, app_name = None):
   :arg str class_type: name of the server test class.
   :arg str app_name: optional test application name, 'test' by default.
   :returns: tuple with the server object and authz hmac signing key."""
-  key_file = fake_authz_key_file()
+  global test_authz_key
+  if not test_authz_key:
+    test_authz_key = fake_authz_key_file()
+
   cfg = Configuration()
   main = cfg.section_('main')
   main.application = app_name or 'test'
   main.silent = True
   main.index = 'top'
   main.authz_defaults = { 'role': None, 'group': None, 'site': None }
-  main.section_('tools').section_('cms_auth').key_file = key_file.name
+  main.section_('tools').section_('cms_auth').key_file = test_authz_key.name
 
   app = cfg.section_(app_name or 'test')
   app.admin = 'dada@example.org'
@@ -96,4 +102,5 @@ def setup_test_server(module_name, class_name, app_name = None):
   cherrypy.config.update({'environment': 'test_suite'})
   for app in cherrypy.tree.apps.values():
     app.config["/"]["request.show_tracebacks"] = True
-  return server, key_file
+
+  return server, test_authz_key

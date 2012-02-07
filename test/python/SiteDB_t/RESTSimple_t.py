@@ -1,10 +1,8 @@
 from cherrypy.test import test, webtest, helper
 from SiteDB.RESTTest import setup_test_server, fake_authz_headers
 from SiteDB.RESTTools import tools
+import SiteDB.RESTTest as T
 from cherrypy import expose
-
-server = None
-authz_key = None
 
 class Root:
   def __init__(self, *args):
@@ -25,26 +23,25 @@ class SimpleTest(helper.CPWebCase):
     self.assertStatus("403 Forbidden")
 
   def test_basic_success(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     self.getPage("/test", headers = h)
     self.assertStatus("200 OK")
     self.assertBody("foo")
 
   def test_auth_fail(self):
-    h = fake_authz_headers(authz_key.data)
+    h = fake_authz_headers(T.test_authz_key.data)
     self.getPage("/test/global_admin", headers = h)
     self.assertStatus("403 Forbidden")
 
   def test_auth_success(self):
-    h = fake_authz_headers(authz_key.data, roles = {"Global Admin": {'group': ['global']}})
+    h = fake_authz_headers(T.test_authz_key.data, roles = {"Global Admin": {'group': ['global']}})
     self.getPage("/test/global_admin", headers = h)
     self.assertStatus("200 OK")
     self.assertBody("ok")
 
 def setup_server():
-  global server, authz_key
   srcfile = __file__.split("/")[-1].split(".py")[0]
-  server, authz_key = setup_test_server(srcfile, "Root")
+  setup_test_server(srcfile, "Root")
 
 if __name__ == '__main__':
   setup_server()
