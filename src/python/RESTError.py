@@ -283,7 +283,7 @@ def report_rest_error(err, trace, throw):
     cherrypy.response.headers["X-REST-Status"] = str(200)
     cherrypy.response.headers["X-Error-HTTP"] = str(err.status)
     cherrypy.response.headers["X-Error-ID"] = errid
-    report_error_header("X-Error-Detail", err.message)
+    report_error_header("X-Error-Detail", err._message)
     if throw: raise err
   else:
     errid = "%032x" % random.randrange(1 << 128)
