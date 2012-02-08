@@ -41,8 +41,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
   /** Action handler for creating a site. */
   var _createSite = function(state, title, tier, country, usage,
-                             url, logourl, gocdbid,
-                             cms, lcg, executive)
+                             url, logo_url, cms, lcg, executive)
   {
     if (! state || ! title || ! tier || ! country
         || ! usage || ! cms || ! lcg || ! executive)
@@ -50,23 +49,23 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
     state.modify([
       { method: "PUT", entity: "sites",
-        data: { "site": title, "tier": tier, "country": country, "usage": usage,
-                "url": url, "logourl": logourl, "gocdbid": gocdbid,
+        data: { "site_name": title, "tier": tier, "country": country,
+                "usage": usage, "url": url, "logo_url": logo_url,
                 "devel_release": "n", "manual_install": "n" },
         message: "Creating site '" + Y.Escape.html(title) + "'" },
 
       { method: "PUT", entity: "site-names",
-        data: { "site": title, "type": "cms", "alias": cms },
+        data: { "site_name": title, "type": "cms", "alias": cms },
         message: "Adding site alias " + Y.Escape.html(title) + " = "
                  + Y.Escape.html(cms) + "/cms" },
 
       { method: "PUT", entity: "site-names",
-        data: { "site": title, "type": "lcg", "alias": lcg },
+        data: { "site_name": title, "type": "lcg", "alias": lcg },
         message: "Adding site alias " + Y.Escape.html(title) + " = "
                  + Y.Escape.html(cms) + "/lcg" },
 
       { method: "PUT", entity: "site-responsibilities",
-        data: { "site": title, "role": "Site Executive",
+        data: { "site_name": title, "role": "Site Executive",
                 "email": executive.email },
         message: "Adding site executive '"
                  + Y.Escape.html(executive.fullname) + "'" }
@@ -85,7 +84,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     site = _state.sitesByCMS[site];
     _state.modify([{
       method: "PUT", entity: "site-names",
-      data: { "site": site.name, "type": alias, "alias": name },
+      data: { "site_name": site.site_name, "type": alias, "alias": name },
       message: "Adding site alias " + Y.Escape.html(site.canonical_name)
                + " = " + Y.Escape.html(name) + "/" + Y.Escape.html(alias)
     }]);
@@ -107,7 +106,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
     _state.modify([{
       method: "DELETE", entity: "site-names",
-      data: { "site": obj.name, "type": alias, "alias": name },
+      data: { "site_name": obj.site_name, "type": alias, "alias": name },
       message: "Deleting site alias " + Y.Escape.html(obj.canonical_name)
                + " = " + Y.Escape.html(name) + "/" + Y.Escape.html(alias)
     }]);
@@ -125,9 +124,9 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     site = _state.sitesByCMS[site];
     _state.modify([{
       method: "PUT", entity: "site-resources",
-      data: { "site": site.name, "type": type, "fqdn": fqdn,
-              "is_primary": primary },
-      message: "Adding site resource " + Y.Escape.html(site.name) + " "
+      data: { "site_name": site.site_name, "type": type,
+              "fqdn": fqdn, "is_primary": primary },
+      message: "Adding site resource " + Y.Escape.html(site.canonical_name) + " "
                + Y.Escape.html(fqdn) + "/" + Y.Escape.html(type)
     }]);
   };
@@ -152,8 +151,8 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
     _state.modify([{
       method: "DELETE", entity: "site-resources",
-      data: { "site": obj.name, "type": type, "fqdn": fqdn },
-      message: "Removing site resource " + Y.Escape.html(obj.name) + " "
+      data: { "site_name": obj.site_name, "type": type, "fqdn": fqdn },
+      message: "Removing site resource " + Y.Escape.html(obj.canonical_name) + " "
                + Y.Escape.html(fqdn) + "/" + Y.Escape.html(type)
     }]);
   };
@@ -167,7 +166,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     parent = _state.sitesByCMS[parent];
     _state.modify([{
       method: "PUT", entity: "site-associations",
-      data: { "parent": parent.name, "child": child.name },
+      data: { "parent": parent.site_name, "child": child.site_name },
       message: "Associating " + Y.Escape.html(child.canonical_name)
                + " to " + Y.Escape.html(parent.canonical_name)
     }]);
@@ -188,7 +187,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     child = _state.sitesByCMS[child];
     _state.modify([{
       method: "DELETE", entity: "site-associations",
-      data: { "parent": parent.name, "child": child.name },
+      data: { "parent": parent.site_name, "child": child.site_name },
       message: "Dissociating " + Y.Escape.html(child.canonical_name)
                + " from " + Y.Escape.html(parent.canonical_name)
     }]);
@@ -282,7 +281,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
                      + Y.Escape.html(name));
 
         view.content("names-head", _self.siteLink(instance, s, "Names", "/names"));
-        view.content("site-title", Y.Escape.html(s.name));
+        view.content("site-title", Y.Escape.html(s.site_name));
         view.content("tier", Y.Escape.html(s.tier));
         view.content("cms",
                      ("cms" in s.name_alias
@@ -300,13 +299,9 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         view.content("usage", (s.usage ? Y.Escape.html(s.usage) : _none));
         view.content("links",
                      (s.url ? "<a target='_new' href='" + s.url + "'>Site</a>" : "")
-                     + (s.url && s.logourl ? ", " : "")
-                     + (s.logourl ? "<a target='_new' href='" + s.logourl + "'>Logo</a>" : "")
-                     + (! s.url && ! s.logourl ? _none : ""));
-        view.content("gocdbid",
-                     (! s.gocdbid ? _none :
-                      "<a target='_new' href='https://goc.gridops.org/site/list?id="
-                      + s.gocdbid + "'>(Link)</a>"));
+                     + (s.url && s.logo_url ? ", " : "")
+                     + (s.logo_url ? "<a target='_new' href='" + s.logo_url + "'>Logo</a>" : "")
+                     + (! s.url && ! s.logo_url ? _none : ""));
 
         view.content("assocs-head",
                      _self.siteLink(instance, s, "Associations", "/associations"));
@@ -415,8 +410,9 @@ var Sites = X.inherit(View, function(Y, gui, rank)
       view.on("button", "click", function(e) {
         _createSite(state, view.valueOf("title"), view.valueOf("tier"),
                     view.valueOf("country"), view.valueOf("usage"),
-                    view.valueOf("url"), view.valueOf("logo"), view.valueOf("goc"),
-                    view.valueOf("cms"), view.valueOf("lcg"), view.__executive);
+                    view.valueOf("url"), view.valueOf("logo"),
+                    view.valueOf("cms"), view.valueOf("lcg"),
+                    view.__executive);
       });
 
       view.focus("tier");
@@ -447,7 +443,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
       view.content("title", Y.Escape.html(site));
       view.on("remove", "click", function(e) {
         state.modify([{
-          method: "DELETE", entity: "sites", data: { "site": obj.name },
+          method: "DELETE", entity: "sites", data: { "site_name": obj.site_name },
           invalidate: ["site-names", "site-resources", "site-associations",
                        "resource-pledges", "pinned-software",
                        "site-responsibilities"],

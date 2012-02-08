@@ -37,7 +37,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     if (obj)
       state.modify([{
         method: "PUT", entity: "resource-pledges",
-        data: { "site": obj.name, "quarter": quarter,
+        data: { "site_name": obj.site_name, "quarter": quarter,
                 "cpu": cpu, "job_slots": jobs,
                 "disk_store": disk, "tape_store": tape,
                 "wan_store": wan, "local_store": local,

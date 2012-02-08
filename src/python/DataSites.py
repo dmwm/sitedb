@@ -14,14 +14,13 @@ class Sites(RESTEntity):
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
-  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *site_name*          site name                 string matching :obj:`.RX_SITE`      required, unique
   *tier_level*         tier level                integer >= 0                         required
   *tier*               tier label                string matching :obj:`.RX_TIER`      required
   *country*            country                   string matching :obj:`.RX_COUNTRY`   required
   *usage*              grid flavour              string matching :obj:`.RX_USAGE`     required
   *url*                site web page             string matching :obj:`.RX_URL`       required
-  *logourl*            logo image location       string matching :obj:`.RX_URL`       required
-  *gocdbid*            id in goc database        bare integer                         required
+  *logo_url*           logo image location       string matching :obj:`.RX_URL`       required
   *devel_release*      (unknown)                 string matching :obj:`.RX_YES_NO`    required
   *manual_install*     (unknown)                 string matching :obj:`.RX_YES_NO`    required
   ==================== ========================= ==================================== ====================
@@ -32,25 +31,23 @@ class Sites(RESTEntity):
       validate_rx('match', param, safe, optional = True)
 
     elif method in ('PUT', 'POST'):
-      validate_strlist('site', param, safe, RX_SITE)
+      validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('tier', param, safe, RX_TIER)
       validate_ustrlist('country', param, safe, RX_COUNTRY)
       validate_strlist('usage', param, safe, RX_USAGE)
       validate_strlist('url', param, safe, RX_URL)
-      validate_strlist('logourl', param, safe, RX_URL)
-      validate_numlist('gocdbid', param, safe, bare = True)
+      validate_strlist('logo_url', param, safe, RX_URL)
       validate_strlist('devel_release', param, safe, RX_YES_NO)
       validate_strlist('manual_install', param, safe, RX_YES_NO)
-      validate_lengths(safe, 'site', 'tier', 'country',
-                       'usage', 'url', 'logourl', 'gocdbid',
-                       'devel_release', 'manual_install')
+      validate_lengths(safe, 'site_name', 'tier', 'country', 'usage',
+                       'url', 'logo_url', 'devel_release', 'manual_install')
 
-      for site in safe.kwargs['site']:
+      for site in safe.kwargs['site_name']:
         authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
     elif method == 'DELETE':
-      validate_strlist('site', param, safe, RX_SITE)
+      validate_strlist('site_name', param, safe, RX_SITE)
       authz_match(role=["Global Admin"], group=["global"])
 
   @restcall
@@ -62,96 +59,87 @@ class Sites(RESTEntity):
     :returns: sequence of rows of sites; field order in the returned
               *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
-      select s.name, t.pos tier_level, t.name tier,
+      select s.name site_name, t.pos tier_level, t.name tier,
              to_nchar(s.country) country,
-             s.usage, s.url, s.logourl, sam.gocdbid,
-             s.getdevlrelease, s.manualinstall
+             s.usage, s.url, s.logourl logo_url,
+             s.getdevlrelease devel_release, s.manualinstall manual_install
       from site s
       join tier t on t.id = s.tier
-      left join site_cms_name_map cmap on cmap.site_id = s.id
-      left join sam_cms_name_map smap on smap.cms_name_id = cmap.cms_name_id
-      left join sam_name sam on sam.id = smap.sam_id
       """)
 
   @restcall
-  def post(self, site, tier, country, usage, url, logourl,
-           gocdbid, devel_release, manual_install):
-    """Update the information for sites identified by `site`. A site
+  def post(self, site_name, tier, country, usage, url, logo_url,
+           devel_release, manual_install):
+    """Update the information for sites identified by `site_name`. A site
     executive can update their own site's record, global admins the info
     for all the sites. When more than one argument is given, there must be
     equal number of arguments for all the parameters.  It is an error to
     attempt to update a non-existent `site`.
 
-    :arg list site: site names to insert;
+    :arg list site_name: site names to insert;
     :arg list tier: new values;
     :arg list country: new values;
     :arg list usage: new values;
     :arg list url: new values;
-    :arg list logourl: new values;
-    :arg list gocdbid: new values;
+    :arg list logo_url: new values;
     :arg list devel_release: new values;
     :arg list manual_install: new values;
     :returns: a list with a dict in which *modified* gives number of objects
-              ipdated in the database, which is always *len(site).*"""
-    # FIXME: gocdbid - use view to update site?
+              ipdated in the database, which is always *len(site_name).*"""
     return self.api.modify("""
       update site set
         tier = (select id from tier where name = :tier),
         country = :country,
         usage = :usage,
         url = :url,
-        logourl = :logourl,
-        -- gocdbid = :gocdbid,
+        logourl = :logo_url,
         getdevlrelease = :devel_release,
         manualinstall = :manual_install
-      where name = :name
-      """, name = site, tier = tier, country = country,
-      usage = usage, url = url, logourl = logourl, # gocdbid = gocdbid,
+      where name = :site_name
+      """, site_name = site_name, tier = tier, country = country,
+      usage = usage, url = url, logo_url = logo_url,
       devel_release = devel_release, manual_install = manual_install)
 
   @restcall
-  def put(self, site, tier, country, usage, url, logourl,
-          gocdbid, devel_release, manual_install):
+  def put(self, site_name, tier, country, usage, url, logo_url,
+          devel_release, manual_install):
     """Insert new sites. The caller needs to have global admin privileges.
     When more than one argument is given, there must equal number of
     arguments for all the parameters. For input validation requirements,
     see the field descriptions above.  It is an error to attempt to insert
-    a `site` which already exists.
+    a `site_name` which already exists.
 
-    :arg list site: site names to insert;
+    :arg list site_name: site names to insert;
     :arg list tier: new values;
     :arg list country: new values;
     :arg list usage: new values;
     :arg list url: new values;
-    :arg list logourl: new values;
-    :arg list gocdbid: new values;
+    :arg list logo_url: new values;
     :arg list devel_release: new values;
     :arg list manual_install: new values;
     :returns: a list with a dict in which *modified* gives number of objects
-              inserted into the database, which is always *len(site).*"""
+              inserted into the database, which is always *len(site_name).*"""
     return self.api.modify("""
       insert into site
-      (id, name, tier, country, usage, url, logourl, -- gocdbid,
-       getdevlrelease, manualinstall)
-      values (site_sq.nextval, :name, (select id from tier where name = :tier),
-              :country, :usage, :url, :logourl, -- :gocdbid,
-              :devel_release, :manual_install)
-      """, name = site, tier = tier, country = country,
-      usage = usage, url = url, logourl = logourl, # gocdbid = gocdbid,
+      (id, name, tier, country, usage, url, logourl, getdevlrelease, manualinstall)
+      values (site_sq.nextval, :site_name, (select id from tier where name = :tier),
+              :country, :usage, :url, :logo_url, :devel_release, :manual_install)
+      """, site_name = site_name, tier = tier, country = country,
+      usage = usage, url = url, logo_url = logo_url,
       devel_release = devel_release, manual_install = manual_install)
 
   @restcall
-  def delete(self, site):
+  def delete(self, site_name):
     """Delete site records. Only a global admin can delete site records.
     For input validation requirements, see the field descriptions above.
-    It is an error to attempt to delete a non-existent `site`.
+    It is an error to attempt to delete a non-existent `site_name`.
 
-    :arg list site: names of sites to delete.
+    :arg list site_name: names of sites to delete.
     :returns: a list with a dict in which *modified* gives number of objects
-              deleted from the database, which is always *len(site).*"""
+              deleted from the database, which is always *len(site_name).*"""
     return self.api.modify("""
-      delete from site where name = :site
-      """, site = site)
+      delete from site where name = :site_name
+      """, site_name = site_name)
 
 ######################################################################
 ######################################################################
@@ -162,7 +150,7 @@ class SiteNames(RESTEntity):
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
   *type*               alias type                string matching :obj:`.RX_NAME_TYPE` required, unique
-  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *site_name*          site name                 string matching :obj:`.RX_SITE`      required, unique
   *alias*              name alias                string matching :obj:`.RX_NAME`      required, unique
   ==================== ========================= ==================================== ====================
   """
@@ -174,10 +162,10 @@ class SiteNames(RESTEntity):
 
     elif method in ('PUT', 'DELETE'):
       validate_strlist('type', param, safe, RX_NAME_TYPE)
-      validate_strlist('site', param, safe, RX_SITE)
+      validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('alias', param, safe, RX_NAME)
-      validate_lengths(safe, 'type', 'site', 'alias')
-      for site in safe.kwargs['site']:
+      validate_lengths(safe, 'type', 'site_name', 'alias')
+      for site in safe.kwargs['site_name']:
         authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
@@ -209,7 +197,7 @@ class SiteNames(RESTEntity):
       """)
 
   @restcall
-  def put(self, type, site, alias):
+  def put(self, type, site_name, alias):
     """Insert new site names. Site executive can update their own site, global
     admin can update names for all the sites. When more than one argument is
     given, there must be an equal number of arguments for all the parameters.
@@ -217,12 +205,12 @@ class SiteNames(RESTEntity):
     It is an error to attempt to insert an existing name alias triplet.
 
     :arg list type: new values;
-    :arg list site: new values;
+    :arg list site_name: new values;
     :arg list alias: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(type).*"""
 
-    binds = self.api.bindmap(type = type, site = site, alias = alias)
+    binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
     phedex = filter(lambda b: b['type'] == 'phedex', binds)
@@ -235,7 +223,7 @@ class SiteNames(RESTEntity):
         into cms_name (id, name) values (cms_name_sq.nextval, alias)
         into site_cms_name_map (site_id, cms_name_id) values (site_id, cms_name_sq.nextval)
         select s.id site_id, :alias alias
-        from site s where s.name = :site
+        from site s where s.name = :site_name
         """, cms)
       self.api.rowstatus(c, 2*len(cms))
       updated += c.rowcount / 2
@@ -247,7 +235,7 @@ class SiteNames(RESTEntity):
         into sam_cms_name_map (cms_name_id, sam_id) values (cms_id, sam_name_sq.nextval)
         select cmap.cms_name_id cms_id, :alias alias
         from site s join site_cms_name_map cmap on cmap.site_id = s.id
-        where s.name = :site
+        where s.name = :site_name
         """, lcg)
       self.api.rowstatus(c, 2*len(lcg))
       updated += c.rowcount / 2
@@ -256,7 +244,7 @@ class SiteNames(RESTEntity):
       c, _ = self.api.executemany("""
         insert into phedex_node (id, site, name)
         select phedex_node_sq.nextval, s.id, :alias
-        from site s where s.name = :site
+        from site s where s.name = :site_name
         """, phedex)
       self.api.rowstatus(c, len(phedex))
       updated += c.rowcount
@@ -268,7 +256,7 @@ class SiteNames(RESTEntity):
     return result
 
   @restcall
-  def delete(self, type, site, alias):
+  def delete(self, type, site_name, alias):
     """Delete site name associations. Site executive can update their own site,
     global admin can update names for all the sites. When more than one
     argument is given, there must be an equal number of arguments for all
@@ -277,11 +265,11 @@ class SiteNames(RESTEntity):
     site name association.
 
     :arg list type: values to delete;
-    :arg list site: values to delete;
+    :arg list site_name: values to delete;
     :arg list alias: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(type).*"""
-    binds = self.api.bindmap(type = type, site = site, alias = alias)
+    binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
     phedex = filter(lambda b: b['type'] == 'phedex', binds)
@@ -294,7 +282,7 @@ class SiteNames(RESTEntity):
         where id in (select cmap.cms_name_id
                      from site s
                      join site_cms_name_map cmap on cmap.site_id = s.id
-                     where s.name = :site)
+                     where s.name = :site_name)
           and name = :alias
         """, cms)
       self.api.rowstatus(c, len(cms))
@@ -307,7 +295,7 @@ class SiteNames(RESTEntity):
                      from site s
                      join site_cms_name_map cmap on cmap.site_id = s.id
                      join sam_cms_name_map smap on smap.cms_name_id = cmap.cms_name_id
-                     where s.name = :site)
+                     where s.name = :site_name)
            and name = :alias
         """, lcg)
       self.api.rowstatus(c, len(lcg))
@@ -316,7 +304,7 @@ class SiteNames(RESTEntity):
     if phedex:
       c, _ = self.api.executemany("""
         delete from phedex_node
-        where site = (select s.id from site s where s.name = :site)
+        where site = (select s.id from site s where s.name = :site_name)
           and name = :alias
         """, phedex)
       self.api.rowstatus(c, len(phedex))
@@ -330,28 +318,13 @@ class SiteNames(RESTEntity):
 
 ######################################################################
 ######################################################################
-# class SiteLinks(RESTEntity):
-#   def validate(self, apiobj, method, api, param, safe):
-#     pass
-#
-#   @restcall
-#   @tools.expires(secs=300)
-#   def get(self):
-#     return self.api.query(None, None, """
-#       select s.name, l.url
-#       from site s
-#       join sitelinks l on l.siteid = s.id
-#     """)
-
-######################################################################
-######################################################################
 class SiteResources(RESTEntity):
   """REST entity for site CE, SE resources.
 
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
-  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *site_name*          site name                 string matching :obj:`.RX_SITE`      required, unique
   *type*               resource type             string matching :obj:`.RX_RES_TYPE`  required
   *fqdn*               fully qualified host name string matching :obj:`.RX_FQDN`      required
   *is_primary*         this is primary resource  string matching :obj:`.RX_YES_NO`    required
@@ -360,18 +333,18 @@ class SiteResources(RESTEntity):
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
     if method in ('PUT', 'DELETE'):
-      validate_strlist('site', param, safe, RX_SITE)
+      validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('type', param, safe, RX_RES_TYPE)
       validate_strlist('fqdn', param, safe, RX_FQDN)
 
     if method == 'PUT':
       validate_strlist('is_primary', param, safe, RX_YES_NO)
-      validate_lengths(safe, 'site', 'type', 'fqdn', 'is_primary')
+      validate_lengths(safe, 'site_name', 'type', 'fqdn', 'is_primary')
     elif method == 'DELETE':
-      validate_lengths(safe, 'site', 'type', 'fqdn')
+      validate_lengths(safe, 'site_name', 'type', 'fqdn')
 
     if method in ('PUT', 'DELETE'):
-      for site in safe.kwargs['site']:
+      for site in safe.kwargs['site_name']:
         authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
                     group=["global"], site=[site])
 
@@ -384,13 +357,13 @@ class SiteResources(RESTEntity):
               *desc.columns*."""
 
     return self.api.query(None, None, """
-      select s.name, r.type, r.fqdn, r.is_primary
+      select s.name site_name, r.type, r.fqdn, r.is_primary
       from site s
       join resource_element r on r.site = s.id
     """)
 
   @restcall
-  def put(self, site, type, fqdn, is_primary):
+  def put(self, site_name, type, fqdn, is_primary):
     """Insert new site resources. Site executive / admin can update their own
     site, global admin can update resources for all the sites. When more than
     one argument is given, there must be an equal number of arguments for all
@@ -398,21 +371,21 @@ class SiteResources(RESTEntity):
     descriptions above. It is an error to attemp to insert an existing site
     resource.
 
-    :arg list site: new values;
+    :arg list site_name: new values;
     :arg list type: new values;
     :arg list fqdn: new values;
     :arg list is_primary: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
-              inserted into the database, which is always *len(site).*"""
+              inserted into the database, which is always *len(site_name).*"""
 
     return self.api.modify("""
       insert into resource_element (id, site, fqdn, type, is_primary)
       select resource_element_sq.nextval, s.id, :fqdn, :type, :is_primary
-      from site s where s.name = :site
-      """, site=site, type=type, fqdn=fqdn, is_primary=is_primary)
+      from site s where s.name = :site_name
+      """, site_name=site_name, type=type, fqdn=fqdn, is_primary=is_primary)
 
   @restcall
-  def delete(self, site, type, fqdn):
+  def delete(self, site_name, type, fqdn):
     """Delete site resource associations. Site executive / admin can update
     their own site, global admin can update resources for all the sites. When
     more than one argument is given, there must be an equal number of arguments
@@ -420,18 +393,18 @@ class SiteResources(RESTEntity):
     descriptions above. It is an error to attempt to delete a non-existent
     site resource.
 
-    :arg list site: values to delete;
+    :arg list site_name: values to delete;
     :arg list type: values to delete;
     :arg list fqdn: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
-              deleted from the database, which is always *len(site).*"""
+              deleted from the database, which is always *len(site_name).*"""
 
     return self.api.modify("""
       delete from resource_element
-      where site = (select s.id from site s where s.name = :site)
+      where site = (select s.id from site s where s.name = :site_name)
         and fqdn = :fqdn
         and type = :type
-      """, site=site, type=type, fqdn=fqdn)
+      """, site_name=site_name, type=type, fqdn=fqdn)
 
 ######################################################################
 ######################################################################

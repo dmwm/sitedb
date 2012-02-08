@@ -11,7 +11,7 @@ class Pledges(RESTEntity):
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
-  *site*               site name                 string matching :obj:`.RX_SITE`      required, unique
+  *site_name*          site name                 string matching :obj:`.RX_SITE`      required, unique
   *date*               date the pledge was made  real, unix epoch time stamp          listed on read
   *quarter*            quarter                   string matching :obj:`.RX_QUARTER`   required
   *cpu*                total cpu capacity, kHS06 real, >= 0                           optional
@@ -39,7 +39,7 @@ class Pledges(RESTEntity):
       validate_rx('match', param, safe, optional = True)
 
     elif method == 'PUT':
-      validate_strlist('site',                param, safe, RX_SITE)
+      validate_strlist('site_name',           param, safe, RX_SITE)
       validate_strlist('quarter',             param, safe, RX_QUARTER)
       validate_reallist('cpu',                param, safe, minval = 0.)
       validate_reallist('job_slots',          param, safe, minval = 0.)
@@ -49,11 +49,11 @@ class Pledges(RESTEntity):
       validate_reallist('local_store',        param, safe, minval = 0.)
       validate_reallist('national_bandwidth', param, safe, minval = 0.)
       validate_reallist('opn_bandwidth',      param, safe, minval = 0.)
-      validate_lengths(safe, 'site', 'quarter', 'cpu', 'job_slots',
+      validate_lengths(safe, 'site_name', 'quarter', 'cpu', 'job_slots',
                        'disk_store', 'tape_store', 'wan_store', 'local_store',
                        'national_bandwidth', 'opn_bandwidth')
 
-      for site in safe.kwargs['site']:
+      for site in safe.kwargs['site_name']:
         authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
                     group=["global"], site=[site])
 
@@ -65,11 +65,11 @@ class Pledges(RESTEntity):
     increasing pledge date, i.e. last entry for a site's quarter is the
     "current" one.
 
-    :arg str match: optional regular expression to filter by *site*
+    :arg str match: optional regular expression to filter by *site_name*
     :returns: sequence of rows of pledges; field order in the
               returned *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
-      select s.name site,
+      select s.name site_name,
              (cast(sys_extract_utc(rp.pledgedate) as date)
               - to_date('19700101', 'YYYYMMDD')) *86400 pledge_date,
              rp.pledgequarter quarter,
@@ -82,16 +82,16 @@ class Pledges(RESTEntity):
       """)
 
   @restcall
-  def put(self, site, quarter, cpu, job_slots,
+  def put(self, site_name, quarter, cpu, job_slots,
           disk_store, tape_store, wan_store, local_store,
           national_bandwidth, opn_bandwidth):
-    """Insert new pledge for *site* and *quarter*. A site executive / admin
-    can insert pledges for their own site, the global admins for all sites.
-    For input validation requirements, see the field descriptions above.
-    When more than one argument is given, there must be equal number of
-    arguments for all the parameters.
+    """Insert new pledge for *site_name* and *quarter*. A site executive /
+    admin can insert pledges for their own site, the global admins for all
+    sites.  For input validation requirements, see the field descriptions
+    above. When more than one argument is given, there must be equal number
+    of arguments for all the parameters.
 
-    :arg list site: sites for which to insert pledges;
+    :arg list site_name: sites for which to insert pledges;
     :arg list quarter: quarters for which to insert pledges;
     :arg list cpu: new values;
     :arg list job_slots: new values;
@@ -102,7 +102,7 @@ class Pledges(RESTEntity):
     :arg list national_bandwidth: new values;
     :arg list opn_bandwidth: new values.
     :returns: a list with a dict in which *modified* gives number of objects
-              inserted into the database, which is always *len(site).*"""
+              inserted into the database, which is always *len(site_name).*"""
     return self.api.modify("""
       insert into resource_pledge
         (pledgeid, site, pledgedate, pledgequarter, cpu, job_slots,
@@ -110,11 +110,11 @@ class Pledges(RESTEntity):
          national_bandwidth, opn_bandwidth)
       values
         (resource_pledge_sq.nextval,
-         (select id from site where name = :site),
+         (select id from site where name = :site_name),
          systimestamp, :quarter, :cpu, :job_slots,
          :disk_store, :tape_store, :wan_store, :local_store,
          :national_bandwidth, :opn_bandwidth)
-      """, site=site, quarter=quarter, cpu=cpu, job_slots=job_slots,
+      """, site_name=site_name, quarter=quarter, cpu=cpu, job_slots=job_slots,
       disk_store=disk_store, tape_store=tape_store,
       wan_store=wan_store, local_store=local_store,
       national_bandwidth=national_bandwidth, opn_bandwidth=opn_bandwidth)

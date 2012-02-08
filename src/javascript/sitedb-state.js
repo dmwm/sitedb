@@ -123,7 +123,7 @@ var State = function(Y, gui, instance)
 
     // Basic site records.
     Y.each(_data['sites'].value || [], function(i) {
-      var site = { cc: null, canonical_name: i.name, name_alias: {},
+      var site = { cc: null, canonical_name: i.site_name, name_alias: {},
                    resources: { CE: [], SE: [] },
                    child_sites: [], parent_site: null,
                    resource_pledges: {}, pinned_software: {},
@@ -134,7 +134,7 @@ var State = function(Y, gui, instance)
       if (! tier)
         tier = tiers[i.tier] = [];
       tier.push(site);
-      byname[i.name] = site;
+      byname[i.site_name] = site;
     });
 
     // Site name aliases.
@@ -145,7 +145,7 @@ var State = function(Y, gui, instance)
 	if (! (i.type in site.name_alias))
 	  site.name_alias[i.type] = [];
         site.name_alias[i.type].push(i.alias);
-        if (i.type == "cms" && site.canonical_name == site.name)
+        if (i.type == "cms" && site.canonical_name == site.site_name)
         {
           site.cc = i.alias.replace(/^T\d+_([A-Z][A-Z])_.*/, "$1").toLowerCase();
           site.canonical_name = i.alias;
@@ -156,9 +156,9 @@ var State = function(Y, gui, instance)
 
     // Site resources (CE, SE).
     Y.each(_data['site-resources'].value || [], function(i) {
-      if (i.name in byname)
+      if (i.site_name in byname)
       {
-        var res = byname[i.name].resources;
+        var res = byname[i.site_name].resources;
         if (! (i.type in res))
 	  res[i.type] = [];
         res[i.type].push(i);
@@ -178,9 +178,9 @@ var State = function(Y, gui, instance)
 
     // Site resource pledges; keep only the most recent one per quarter.
     Y.each(_data['resource-pledges'].value || [], function(i) {
-      if (i.site in byname)
+      if (i.site_name in byname)
       {
-        var pledges = byname[i.site].resource_pledges;
+        var pledges = byname[i.site_name].resource_pledges;
         if (! (i.quarter in pledges)
             || pledges[i.quarter].pledge_date < i.pledge_date)
 	  pledges[i.quarter] = i;
@@ -189,9 +189,9 @@ var State = function(Y, gui, instance)
 
     // Pinned software.
     Y.each(_data['pinned-software'].value || [], function(i) {
-      if (i.site in byname)
+      if (i.site_name in byname)
       {
-        var pins = byname[i.site].pinned_software;
+        var pins = byname[i.site_name].pinned_software;
         if (! (i.ce in pins))
 	  pins[i.ce] = [];
 	pins[i.ce].push(i);
@@ -200,9 +200,9 @@ var State = function(Y, gui, instance)
 
     // Site responsibilities; associates site, role and person.
     Y.each(_data['site-responsibilities'].value || [], function(i) {
-      if (i.site in byname && i.email in bymail && i.role in roles)
+      if (i.site_name in byname && i.email in bymail && i.role in roles)
       {
-        var site = byname[i.site];
+        var site = byname[i.site_name];
 	var role = roles[i.role];
         var person = bymail[i.email];
 
@@ -216,9 +216,9 @@ var State = function(Y, gui, instance)
 	  r[i.role] = { site: [], group: [] };
 	r[i.role].site.push(site);
 
-	if (! (i.site in role.site))
-          role.site[i.site] = [];
-        role.site[i.site].push(person);
+	if (! (i.site_name in role.site))
+          role.site[i.site_name] = [];
+        role.site[i.site_name].push(person);
       }
     });
 
@@ -270,7 +270,7 @@ var State = function(Y, gui, instance)
     Y.each(bymail, function(person) {
       Y.each(person.roles, function(v) {
         v.site.sort(_self.sortSite);
-        v.group.sort(function(a, b) { return d3.ascending(a.name, b.name); });
+        v.group.sort(_self.sortName);
         Y.each(v.site, function(s) { person.sites[s.canonical_name] = s; });
         Y.each(v.group, function(g) { person.groups[g.name] = g; });
       });

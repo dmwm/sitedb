@@ -619,8 +619,8 @@ var View = function(Y, gui, rank, label, required)
   /** Generate link to a site. */
   this.siteLink = function(instance, site, title, tail)
   {
-    var name = "(" + site.name + ")";
-    if ("cms" in site.name_alias && site.canonical_name)
+    var name = "(" + site.site_name + ")";
+    if ("cms" in site.name_alias)
       name = site.canonical_name;
 
     return "<a class='internal' href='" + REST_SERVER_ROOT + "/"
@@ -632,8 +632,8 @@ var View = function(Y, gui, rank, label, required)
   /** Generate link to a site pledge. */
   this.pledgeLink = function(instance, site, title, tail)
   {
-    var name = "(" + site.name + ")";
-    if (site.canonical_name && site.canonical_name != site.name)
+    var name = "(" + site.site_name + ")";
+    if ("cms" in site.name_alias)
       name = site.canonical_name;
 
     return "<a class='internal' href='" + REST_SERVER_ROOT + "/"

@@ -117,7 +117,8 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     else
       _state.modify([{
         method: "PUT", entity: "site-responsibilities",
-        data: { "email": person.email, "role": role.title, "site": site.name },
+        data: { "email": person.email, "role": role.title,
+                "site_name": site.site_name },
         message: "Adding role '" + Y.Escape.html(role.title)
                  + "' for '" + Y.Escape.html(person.fullname)
                  + " [" + Y.Escape.html(person.email) + "] for site '"
@@ -160,7 +161,8 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     else
       _state.modify([{
         method: "DELETE", entity: "site-responsibilities",
-        data: { "email": person.email, "role": role.title, "site": site.name },
+        data: { "email": person.email, "role": role.title,
+                "site_name": site.site_name },
         message: "Removing role '" + Y.Escape.html(role.title)
                  + "' from '" + Y.Escape.html(person.fullname)
                  + " [" + Y.Escape.html(person.email) + "] for site '"
@@ -454,10 +456,10 @@ var Admin = X.inherit(View, function(Y, gui, rank)
 
       content = "";
       Y.each(sites, function(s) {
-        if (s.name in obj.site)
+        if (s.site_name in obj.site)
         {
-          var admin = isgadmin || state.hasSiteRole("Site Executive", s.name);
-          var v = obj.site[s.name];
+          var admin = isgadmin || state.hasSiteRole("Site Executive", s.site_name);
+          var v = obj.site[s.site_name];
           content += "<tr><td rowspan='" + v.length + "'>"
                      + Y.Escape.html(s.canonical_name) + "</td>";
           Y.each(v, function(p, ix) {

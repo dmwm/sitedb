@@ -11,7 +11,7 @@ class UserSites(RESTEntity):
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
   *email*              person's e-mail           string matching :obj:`.RX_EMAIL`     required
-  *site*               site name                 string matching :obj:`.RX_SITE`      required
+  *site_name*          site name                 string matching :obj:`.RX_SITE`      required
   *role*               role title                string matching :obj:`.RX_LABEL`     required
   ==================== ========================= ==================================== ====================
   """
@@ -19,10 +19,10 @@ class UserSites(RESTEntity):
     """Validate request input data."""
     if method in ('PUT', 'DELETE'):
       validate_strlist('email', param, safe, RX_EMAIL)
-      validate_strlist('site', param, safe, RX_SITE)
+      validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('role', param, safe, RX_LABEL)
-      validate_lengths(safe, 'email', 'site', 'role')
-      for site in safe.kwargs['site']:
+      validate_lengths(safe, 'email', 'site_name', 'role')
+      for site in safe.kwargs['site_name']:
         authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
@@ -36,7 +36,7 @@ class UserSites(RESTEntity):
               *desc.columns*."""
 
     return self.api.query(None, None, """
-      select ct.email, s.name site, r.title role
+      select ct.email, s.name site_name, r.title role
       from site_responsibility sr
       join contact ct on ct.id = sr.contact
       join role r on r.id = sr.role
@@ -44,7 +44,7 @@ class UserSites(RESTEntity):
       """)
 
   @restcall
-  def put(self, email, site, role):
+  def put(self, email, site_name, role):
     """Insert new privilege associations. Site executive can update their own
     site, global admin can update associations for any site. When more than
     one argument is given, there must be an equal number of arguments for
@@ -53,7 +53,7 @@ class UserSites(RESTEntity):
     association triplet.
 
     :arg list email: new values;
-    :arg list site: new values;
+    :arg list site_name: new values;
     :arg list role: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(email).*"""
@@ -62,11 +62,11 @@ class UserSites(RESTEntity):
       insert into site_responsibility (contact, role, site)
       values ((select id from contact where email = :email),
               (select id from role where title = :role),
-              (select id from site where name = :site))
-      """, email = email, site = site, role = role)
+              (select id from site where name = :site_name))
+      """, email = email, site_name = site_name, role = role)
 
   @restcall
-  def delete(self, email, site, role):
+  def delete(self, email, site_name, role):
     """Delete privilege associations. Site executive can update their own site,
     global admin can update associations for any site. When more than one
     argument is given, there must be an equal number of arguments for all
@@ -75,7 +75,7 @@ class UserSites(RESTEntity):
     association triplet.
 
     :arg list email: values to delete;
-    :arg list site: values to delete;
+    :arg list site_name: values to delete;
     :arg list role: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from teh database, which is always *len(email).*"""
@@ -84,5 +84,5 @@ class UserSites(RESTEntity):
       delete from site_responsibility
       where contact = (select id from contact where email = :email)
         and role = (select id from role where title = :role)
-        and site = (select id from site where name = :site)
-      """, email = email, site = site, role = role)
+        and site = (select id from site where name = :site_name)
+      """, email = email, site_name = site_name, role = role)
