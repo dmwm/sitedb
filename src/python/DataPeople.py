@@ -116,10 +116,9 @@ class People(RESTEntity):
     :returns: a list with a dict in which *modified* gives number of objects
               inserted into the database, which is always *len(email).*"""
     c, _ = self.api.executemany("""
-      insert into user_passwd (username, passwd)
-      values (:username, '*')
+      merge into user_passwd u using dual on (u.username = :username)
+      when not matched then insert (username, passwd) values (:username, '*')
       """, self.api.bindmap(username = username))
-    self.api.rowstatus(c, len(username))
 
     return self.api.modify("""
       insert into contact
