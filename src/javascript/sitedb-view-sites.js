@@ -166,7 +166,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     parent = _state.sitesByCMS[parent];
     _state.modify([{
       method: "PUT", entity: "site-associations",
-      data: { "parent": parent.site_name, "child": child.site_name },
+      data: { "parent_site": parent.site_name, "child_site": child.site_name },
       message: "Associating " + Y.Escape.html(child.canonical_name)
                + " to " + Y.Escape.html(parent.canonical_name)
     }]);
@@ -187,7 +187,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     child = _state.sitesByCMS[child];
     _state.modify([{
       method: "DELETE", entity: "site-associations",
-      data: { "parent": parent.site_name, "child": child.site_name },
+      data: { "parent_site": parent.site_name, "child_site": child.site_name },
       message: "Dissociating " + Y.Escape.html(child.canonical_name)
                + " from " + Y.Escape.html(parent.canonical_name)
     }]);

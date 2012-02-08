@@ -414,18 +414,18 @@ class SiteAssociations(RESTEntity):
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
-  *parent*             parent site name          string matching :obj:`.RX_SITE`      required
-  *child*              child site name           string matching :obj:`.RX_SITE`      required
+  *parent_site*        parent site name          string matching :obj:`.RX_SITE`      required
+  *child_site*         child site name           string matching :obj:`.RX_SITE`      required
   ==================== ========================= ==================================== ====================
   """
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
 
     if method in ('PUT', 'DELETE'):
-      validate_strlist('parent', param, safe, RX_SITE)
-      validate_strlist('child',  param, safe, RX_SITE)
-      validate_lengths(safe, 'parent', 'child')
-      for site in safe.kwargs['parent']:
+      validate_strlist('parent_site', param, safe, RX_SITE)
+      validate_strlist('child_site',  param, safe, RX_SITE)
+      validate_lengths(safe, 'parent_site', 'child_site')
+      for site in safe.kwargs['parent_site']:
         authz_match(role=["Global Admin", "Site Executive"],
                     group=["global"], site=[site])
 
@@ -446,7 +446,7 @@ class SiteAssociations(RESTEntity):
     """)
 
   @restcall
-  def put(self, parent, child):
+  def put(self, parent_site, child_site):
     """Insert new site associations. Parent site executive can update their own
     site, global admin can update associations for all the sites. The parent
     site must be a higher tier level than the child: the children of a Tier-1
@@ -455,34 +455,34 @@ class SiteAssociations(RESTEntity):
     input validation requirements, see the field descriptions above. It is an
     error to attempt to insert an existing site association pair.
 
-    :arg list parent: new values;
-    :arg list child: new values;
+    :arg list parent_site: new values;
+    :arg list child_site: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
-              inserted into the database, which is always *len(parent).*"""
+              inserted into the database, which is always *len(parent_site).*"""
 
     return self.api.modify("""
       insert into site_association (parent_site, child_site)
       select p.id, c.id from site p, site c, tier pt, tier ct
-      where p.name = :parent and pt.id = p.tier
-        and c.name = :child and ct.id = c.tier
+      where p.name = :parent_site and pt.id = p.tier
+        and c.name = :child_site and ct.id = c.tier
         and ct.pos > pt.pos
-      """, parent=parent, child=child)
+      """, parent_site=parent_site, child_site=child_site)
 
   @restcall
-  def delete(self, parent, child):
+  def delete(self, parent_site, child_site):
     """Delete site associations. Parent site executive can update their own site,
     global admin can update associations for all the sites. When more than one
     argument is given, there must be an equal number of arguments for all the
     parameters. For input validation requirements, see the field descriptions
     above. It is an error to attempt to delete a non-existent association.
 
-    :arg list parent: values to delete;
-    :arg list child: values to delete;
+    :arg list parent_site: values to delete;
+    :arg list child_site: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
-              deleted from the database, which is always *len(parent).*"""
+              deleted from the database, which is always *len(parent_site).*"""
 
     return self.api.modify("""
       delete from site_association
-      where parent_site = (select id from site where name = :parent)
-        and child_site = (select id from site where name = :child)
-      """, parent=parent, child=child)
+      where parent_site = (select id from site where name = :parent_site)
+        and child_site = (select id from site where name = :child_site)
+      """, parent_site=parent_site, child_site=child_site)
