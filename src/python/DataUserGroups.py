@@ -11,7 +11,7 @@ class UserGroups(RESTEntity):
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
   ==================== ========================= ==================================== ====================
-  *email*              person's e-mail           string matching :obj:`.RX_EMAIL`     required
+  *username*           account name              string matching :obj:`.RX_USER`      required
   *user_group*         group name                string matching :obj:`.RX_LABEL`     required
   *role*               role title                string matching :obj:`.RX_LABEL`     required
   ==================== ========================= ==================================== ====================
@@ -19,10 +19,10 @@ class UserGroups(RESTEntity):
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
     if method in ('PUT', 'DELETE'):
-      validate_strlist('email', param, safe, RX_EMAIL)
+      validate_strlist('username', param, safe, RX_USER)
       validate_strlist('user_group', param, safe, RX_LABEL)
       validate_strlist('role', param, safe, RX_LABEL)
-      validate_lengths(safe, 'email', 'user_group', 'role')
+      validate_lengths(safe, 'username', 'user_group', 'role')
       for group in safe.kwargs['user_group']:
         try:
           authz_match(role=["Global Admin"], group=["global"])
@@ -39,7 +39,7 @@ class UserGroups(RESTEntity):
               *desc.columns*."""
 
     return self.api.query(None, None, """
-      select ct.email, g.name user_group, r.title role
+      select ct.username, g.name user_group, r.title role
       from group_responsibility gr
       join contact ct on ct.id = gr.contact
       join role r on r.id = gr.role
@@ -47,7 +47,7 @@ class UserGroups(RESTEntity):
       """)
 
   @restcall
-  def put(self, email, user_group, role):
+  def put(self, username, user_group, role):
     """Insert new privilege associations. The caller needs to be global admin
     in the global group, or global admin or admin in the group being changed.
     When more than one argument is given, there must be an equal number of
@@ -55,21 +55,21 @@ class UserGroups(RESTEntity):
     the field descriptions above. It is an error to attempt to insert an
     existing association triplet.
 
-    :arg list email: new values;
+    :arg list username: new values;
     :arg list user_group: new values;
     :arg list role: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
-              inserted into the database, which is always *len(email).*"""
+              inserted into the database, which is always *len(username).*"""
 
     return self.api.modify("""
       insert into group_responsibility (contact, role, user_group)
-      values ((select id from contact where email = :email),
+      values ((select id from contact where username = :username),
               (select id from role where title = :role),
               (select id from user_group where name = :user_group))
-      """, email = email, user_group = user_group, role = role)
+      """, username = username, user_group = user_group, role = role)
 
   @restcall
-  def delete(self, email, user_group, role):
+  def delete(self, username, user_group, role):
     """Delete privilege associations. The caller needs to be global admin
     in the global group, or global admin or admin in the group being changed.
     When more than one argument is given, there must be an equal number of
@@ -77,15 +77,15 @@ class UserGroups(RESTEntity):
     the field descriptions above. It is an error to attempt to delete a
     non-existent association triplet.
 
-    :arg list email: values to delete;
+    :arg list username: values to delete;
     :arg list user_group: values to delete;
     :arg list role: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
-              deleted from teh database, which is always *len(email).*"""
+              deleted from the database, which is always *len(username).*"""
 
     return self.api.modify("""
       delete from group_responsibility
-      where contact = (select id from contact where email = :email)
+      where contact = (select id from contact where username = :username)
         and role = (select id from role where title = :role)
         and user_group = (select id from user_group where name = :user_group)
-      """, email = email, user_group = user_group, role = role)
+      """, username = username, user_group = user_group, role = role)

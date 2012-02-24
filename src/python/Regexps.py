@@ -30,7 +30,8 @@ RX_CMS_NAME  = re.compile(r"^T\d+_[A-Z]{2}_[A-Za-z0-9_]+$")
 RX_TIER      = re.compile(r"^Tier \d+$")
 
 #: Regular expression for user/login names.
-RX_USER      = re.compile(r"^[a-z0-9_]+$")
+RX_USER      = re.compile(r"^(?:[a-z0-9_]+(?:\.notcms|\.nocern)?"
+                          r"|[a-z0-9]+@(?:[-a-z0-9]+\.)+[a-z]{2,5})$")
 
 #: Regular expression for passwords.
 RX_PASSWD    = re.compile(r"^([*]|(RemovedUser--)?[A-Za-z0-9._/]{13,})$")

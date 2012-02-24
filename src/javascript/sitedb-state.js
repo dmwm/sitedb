@@ -117,7 +117,8 @@ var State = function(Y, gui, instance)
       if (whoami && p.username == whoami.login)
 	whoami.person = p;
       bymail[p.email] = p;
-      byhn[p.username] = p;
+      if (p.username)
+        byhn[p.username] = p;
       people.push(p);
     });
 
@@ -200,11 +201,11 @@ var State = function(Y, gui, instance)
 
     // Site responsibilities; associates site, role and person.
     Y.each(_data['site-responsibilities'].value || [], function(i) {
-      if (i.site_name in byname && i.email in bymail && i.role in roles)
+      if (i.site_name in byname && i.username in byhn && i.role in roles)
       {
         var site = byname[i.site_name];
 	var role = roles[i.role];
-        var person = bymail[i.email];
+        var person = byhn[i.username];
 
         var r = site.responsibilities;
         if (! (i.role in r))
@@ -224,11 +225,11 @@ var State = function(Y, gui, instance)
 
     // Group responsibilities; associates group, role and person.
     Y.each(_data['group-responsibilities'].value || [], function(i) {
-      if (i.user_group in groups && i.email in bymail && i.role in roles)
+      if (i.user_group in groups && i.username in byhn && i.role in roles)
       {
         var group = groups[i.user_group];
 	var role = roles[i.role];
-        var person = bymail[i.email];
+        var person = byhn[i.username];
 
         group.members.push(person);
 
@@ -249,11 +250,11 @@ var State = function(Y, gui, instance)
     Y.each(roles, function(role) {
       var members = {};
       Y.each(role.site, function(v) {
-        Y.each(v, function(p) { members[p.email] = p; });
+        Y.each(v, function(p) { members[p.username] = p; });
         v.sort(_self.sortSite);
       });
       Y.each(role.group, function(v) {
-        Y.each(v, function(p) { members[p.email] = p; });
+        Y.each(v, function(p) { members[p.username] = p; });
         v.sort(_self.sortPerson);
       });
       role.members = Y.Object.values(members);
@@ -262,12 +263,12 @@ var State = function(Y, gui, instance)
 
     Y.each(groups, function(group) {
       var members = {};
-      Y.each(group.members, function(p) { members[p.email] = p; });
+      Y.each(group.members, function(p) { members[p.username] = p; });
       group.members = Y.Object.values(members);
       group.members.sort(_self.sortPerson);
     });
 
-    Y.each(bymail, function(person) {
+    Y.each(byhn, function(person) {
       Y.each(person.roles, function(v) {
         v.site.sort(_self.sortSite);
         v.group.sort(_self.sortName);
