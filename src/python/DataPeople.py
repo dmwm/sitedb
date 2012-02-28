@@ -94,7 +94,7 @@ class People(RESTEntity):
           phone1 = :phone1,
           phone2 = :phone2,
           im_handle = :im_handle
-      where username = :username,
+      where username = :username
       """, username = username, email = email, forename = forename, surname = surname,
       dn = dn, phone1 = phone1, phone2 = phone2, im_handle = im_handle)
 
