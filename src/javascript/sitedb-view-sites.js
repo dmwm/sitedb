@@ -66,7 +66,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
       { method: "PUT", entity: "site-responsibilities",
         data: { "site_name": title, "role": "Site Executive",
-                "email": executive.email },
+                "username": executive.username },
         message: "Adding site executive '"
                  + Y.Escape.html(executive.fullname) + "'" }
     ]);

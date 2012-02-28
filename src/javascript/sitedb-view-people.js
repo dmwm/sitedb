@@ -338,8 +338,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person])
-            || ((person in state.peopleByMail) && state.peopleByMail[person]);
+    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
     _self.title(state, p ? p.fullname : person, "People");
     _self.loading(state);
 
@@ -433,8 +432,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person])
-            || ((person in state.peopleByMail) && state.peopleByMail[person]);
+    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
     _self.title(state, "Remove", p ? p.fullname : person, "People");
     _self.loading(state);
 
@@ -457,7 +455,7 @@ var People = X.inherit(View, function(Y, gui, rank)
 
       view.on("remove", "click", function(e) {
         state.modify([{
-          method: "DELETE", entity: "people", data: { "email": p.email },
+          method: "DELETE", entity: "people", data: { "username": p.username },
           invalidate: [ "whoami", "site-responsibilities", "group-responsibilities" ],
           message: "Removing record for '" + Y.Escape.html(p.fullname) + "'",
           onsuccess: function(){ gui.history.save("/" + instance + "/people"); }
@@ -486,8 +484,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person])
-            || ((person in state.peopleByMail) && state.peopleByMail[person]);
+    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
     _self.title(state, "Edit", p ? p.fullname : person, "People");
     _self.loading(state);
 

@@ -107,7 +107,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     if (group)
       _state.modify([{
         method: "PUT", entity: "group-responsibilities",
-        data: { "email": person.email, "role": role.title,
+        data: { "username": person.username, "role": role.title,
                 "user_group": group.name },
         message: "Adding role '" + Y.Escape.html(role.title)
                  + "' for '" + Y.Escape.html(person.fullname)
@@ -117,7 +117,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     else
       _state.modify([{
         method: "PUT", entity: "site-responsibilities",
-        data: { "email": person.email, "role": role.title,
+        data: { "username": person.username, "role": role.title,
                 "site_name": site.site_name },
         message: "Adding role '" + Y.Escape.html(role.title)
                  + "' for '" + Y.Escape.html(person.fullname)
@@ -140,18 +140,18 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     if (! (role in _state.rolesByTitle)
         || (site && ! (site in _state.sitesByCMS))
         || (group && ! (group in _state.groupsByName))
-        || ! (person in _state.peopleByMail))
+        || ! (person in _state.peopleByHN))
       return;
 
     role = _state.rolesByTitle[role];
     site = (site && _state.sitesByCMS[site]);
     group = (group && _state.groupsByName[group]);
-    person = _state.peopleByMail[person];
+    person = _state.peopleByHN[person];
 
     if (group)
       _state.modify([{
         method: "DELETE", entity: "group-responsibilities",
-        data: { "email": person.email, "role": role.title,
+        data: { "username": person.username, "role": role.title,
                 "user_group": group.name },
         message: "Removing role '" + Y.Escape.html(role.title)
                  + "' from '" + Y.Escape.html(person.fullname)
@@ -161,7 +161,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     else
       _state.modify([{
         method: "DELETE", entity: "site-responsibilities",
-        data: { "email": person.email, "role": role.title,
+        data: { "username": person.username, "role": role.title,
                 "site_name": site.site_name },
         message: "Removing role '" + Y.Escape.html(role.title)
                  + "' from '" + Y.Escape.html(person.fullname)
@@ -339,7 +339,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + "<span class='rmbutton rmitem' title='Remove item'"
                        + " x-role='" + X.encodeAsPath(r.title) + "'"
                        + " x-group='" + X.encodeAsPath(obj.name) + "'"
-                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
                        + " x-admin='" + (isadmin ? "yes" : "no") + "'"
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, p)
@@ -444,7 +444,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + "<span class='rmbutton rmitem' title='Remove item'"
                        + " x-role='" + X.encodeAsPath(obj.title) + "'"
                        + " x-group='" + X.encodeAsPath(g.name) + "'"
-                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
                        + " x-admin='" + (isadmin ? "yes" : "no") + "'"
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, p)
@@ -467,7 +467,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + "<span class='rmbutton rmitem' title='Remove item'"
                        + " x-role='" + X.encodeAsPath(obj.title) + "'"
                        + " x-site='" + X.encodeAsPath(s.canonical_name) + "'"
-                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
                        + " x-admin='" + (admin ? "yes" : "no") + "'"
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, p)
@@ -557,7 +557,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + "<span class='rmbutton rmitem' title='Remove item'"
                        + " x-role='" + X.encodeAsPath(r.title) + "'"
                        + " x-site='" + X.encodeAsPath(obj.canonical_name) + "'"
-                       + " x-person='" + X.encodeAsPath(p.email) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
                        + " x-admin='" + (isadmin ? "yes" : "no") + "'"
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, p)

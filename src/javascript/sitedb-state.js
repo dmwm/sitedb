@@ -49,9 +49,6 @@ var State = function(Y, gui, instance)
   /** Current people data as a flat list. */
   this.people = [];
 
-  /** Current people data organised by e-mail address. */
-  this.peopleByMail = {};
-
   /** Current roles by role title. */
   this.rolesByTitle = {};
 
@@ -88,7 +85,7 @@ var State = function(Y, gui, instance)
   var _rebuild = function()
   {
     var whoami = null;
-    var people = [], bymail = {}, byhn = {};
+    var people = [], byhn = {};
     var roles = {}, groups = {};
     var tiers = {}, byname = {}, bycms = {};
 
@@ -116,9 +113,7 @@ var State = function(Y, gui, instance)
 	p.fullname = p.forename + " " + p.surname;
       if (whoami && p.username == whoami.login)
 	whoami.person = p;
-      bymail[p.email] = p;
-      if (p.username)
-        byhn[p.username] = p;
+      byhn[p.username] = p;
       people.push(p);
     });
 
@@ -301,7 +296,6 @@ var State = function(Y, gui, instance)
     _self.sitesByCMS = bycms;
     _self.people = people;
     _self.peopleByHN = byhn;
-    _self.peopleByMail = bymail;
     _self.rolesByTitle = roles;
     _self.groupsByName = groups;
     _self.whoami = whoami;

@@ -645,7 +645,7 @@ var View = function(Y, gui, rank, label, required)
   /** Generate link to a person. */
   this.personLink = function(instance, person, title, tail)
   {
-    var id = person.username || person.email;
+    var id = person.username;
     var name = person.fullname || person.email;
     return "<a class='internal' href='" + REST_SERVER_ROOT + "/"
            + X.encodeAsPath(instance) + "/people/"
