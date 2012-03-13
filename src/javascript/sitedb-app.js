@@ -292,6 +292,8 @@ var SiteDB = function(Y, views, debug)
       if (content == "")
         content = "<p class='faded'>Unknown</p>";
     }
+    else if (_state.complete)
+      content = "";
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
@@ -314,6 +316,8 @@ var SiteDB = function(Y, views, debug)
       if (content == "")
         content = "<p class='faded'>None</p>";
     }
+    else if (_state.complete)
+      content = "<p class='faded'>None</p>";
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
@@ -330,6 +334,8 @@ var SiteDB = function(Y, views, debug)
       if (content == "")
         content = "<p class='faded'>None</p>";
     }
+    else if (_state.complete)
+      content = "<p class='faded'>None</p>";
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
@@ -346,6 +352,8 @@ var SiteDB = function(Y, views, debug)
       if (content == "")
         content = "<p class='faded'>None</p>";
     }
+    else if (_state.complete)
+      content = "<p class='faded'>None</p>";
     else
       content = "<p class='faded'>Not yet loaded</p>";
 
