@@ -111,7 +111,7 @@ var State = function(Y, gui, instance)
         p.im_handle = p.im_handle.replace(/^none(:none)*$/gi, "");
       if (p.surname)
 	p.fullname = p.forename + " " + p.surname;
-      if (whoami && p.username == whoami.login)
+      if (whoami && whoami.login && p.username == whoami.login)
 	whoami.person = p;
       byhn[p.username] = p;
       people.push(p);
