@@ -387,7 +387,16 @@ ViewContent = function(Y, id)
       var element = node.get("tagName");
 
       if (item in _content)
+      {
+        var oldval;
+        if (element == 'SELECT')
+          oldval = _getValue(node);
+
         X.applyContent(node, _content[item]);
+
+        if (element == 'SELECT')
+          _setValue(node, oldval);
+      }
 
       if (item in _style)
         Y.each(_style[item], function(value, style) {
