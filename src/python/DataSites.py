@@ -1,4 +1,5 @@
 from SiteDB.RESTServer import RESTEntity, restcall, rows
+from SiteDB.SiteAuth import oldsite_authz_match
 from SiteDB.RESTAuth import authz_match
 from SiteDB.RESTTools import tools
 from SiteDB.RESTValidation import *
@@ -42,13 +43,20 @@ class Sites(RESTEntity):
       validate_lengths(safe, 'site_name', 'tier', 'country', 'usage',
                        'url', 'logo_url', 'devel_release', 'manual_install')
 
-      for site in safe.kwargs['site_name']:
-        authz_match(role=["Global Admin", "Site Executive"],
-                    group=["global"], site=[site])
-
     elif method == 'DELETE':
       validate_strlist('site_name', param, safe, RX_SITE)
+
+    # Delay POST authz until we have database connection for name remapping.
+    if method in ('PUT', 'DELETE'):
       authz_match(role=["Global Admin"], group=["global"])
+
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -85,7 +93,8 @@ class Sites(RESTEntity):
     :arg list devel_release: new values;
     :arg list manual_install: new values;
     :returns: a list with a dict in which *modified* gives number of objects
-              ipdated in the database, which is always *len(site_name).*"""
+              updated in the database, which is always *len(site_name).*"""
+    self._authz(site_name)
     return self.api.modify("""
       update site set
         tier = (select id from tier where name = :tier),
@@ -165,9 +174,15 @@ class SiteNames(RESTEntity):
       validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('alias', param, safe, RX_NAME)
       validate_lengths(safe, 'type', 'site_name', 'alias')
-      for site in safe.kwargs['site_name']:
-        authz_match(role=["Global Admin", "Site Executive"],
-                    group=["global"], site=[site])
+      # Delay authz until we have database connection for name remapping.
+
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -209,6 +224,8 @@ class SiteNames(RESTEntity):
     :arg list alias: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(type).*"""
+
+    self._authz(site_name)
 
     binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
@@ -269,6 +286,9 @@ class SiteNames(RESTEntity):
     :arg list alias: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(type).*"""
+
+    self._authz(site_name)
+
     binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
@@ -343,10 +363,15 @@ class SiteResources(RESTEntity):
     elif method == 'DELETE':
       validate_lengths(safe, 'site_name', 'type', 'fqdn')
 
-    if method in ('PUT', 'DELETE'):
-      for site in safe.kwargs['site_name']:
-        authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
-                    group=["global"], site=[site])
+    # Delay authz until we have database connection for name remapping.
+
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive", "Site Admin"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -378,6 +403,7 @@ class SiteResources(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(site_name).*"""
 
+    self._authz(site_name)
     return self.api.modify("""
       insert into resource_element (id, site, fqdn, type, is_primary)
       select resource_element_sq.nextval, s.id, :fqdn, :type, :is_primary
@@ -399,6 +425,7 @@ class SiteResources(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(site_name).*"""
 
+    self._authz(site_name)
     return self.api.modify("""
       delete from resource_element
       where site = (select s.id from site s where s.name = :site_name)
@@ -425,9 +452,15 @@ class SiteAssociations(RESTEntity):
       validate_strlist('parent_site', param, safe, RX_SITE)
       validate_strlist('child_site',  param, safe, RX_SITE)
       validate_lengths(safe, 'parent_site', 'child_site')
-      for site in safe.kwargs['parent_site']:
-        authz_match(role=["Global Admin", "Site Executive"],
-                    group=["global"], site=[site])
+      # Delay authz until we have database connection for name remapping.
+
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -460,6 +493,7 @@ class SiteAssociations(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(parent_site).*"""
 
+    self._authz(parent_site)
     return self.api.modify("""
       insert into site_association (parent_site, child_site)
       select p.id, c.id from site p, site c, tier pt, tier ct
@@ -481,6 +515,7 @@ class SiteAssociations(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(parent_site).*"""
 
+    self._authz(parent_site)
     return self.api.modify("""
       delete from site_association
       where parent_site = (select id from site where name = :parent_site)

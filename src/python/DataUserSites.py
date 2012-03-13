@@ -1,5 +1,5 @@
 from SiteDB.RESTServer import RESTEntity, restcall
-from SiteDB.RESTAuth import authz_match
+from SiteDB.SiteAuth import oldsite_authz_match
 from SiteDB.RESTTools import tools
 from SiteDB.RESTValidation import *
 from SiteDB.Regexps import *
@@ -22,9 +22,15 @@ class UserSites(RESTEntity):
       validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('role', param, safe, RX_LABEL)
       validate_lengths(safe, 'username', 'site_name', 'role')
-      for site in safe.kwargs['site_name']:
-        authz_match(role=["Global Admin", "Site Executive"],
-                    group=["global"], site=[site])
+      # Delay authz until we have database connection for name remapping.
+
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -58,6 +64,7 @@ class UserSites(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(username).*"""
 
+    self._authz(site_name)
     return self.api.modify("""
       insert into site_responsibility (contact, role, site)
       values ((select id from contact where username = :username),
@@ -80,6 +87,7 @@ class UserSites(RESTEntity):
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(username).*"""
 
+    self._authz(site_name)
     return self.api.modify("""
       delete from site_responsibility
       where contact = (select id from contact where username = :username)

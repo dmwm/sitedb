@@ -1,5 +1,5 @@
 from SiteDB.RESTServer import RESTEntity, restcall
-from SiteDB.RESTAuth import authz_match
+from SiteDB.SiteAuth import oldsite_authz_match
 from SiteDB.RESTTools import tools
 from SiteDB.RESTValidation import *
 from SiteDB.Regexps import *
@@ -52,10 +52,15 @@ class Pledges(RESTEntity):
       validate_lengths(safe, 'site_name', 'quarter', 'cpu', 'job_slots',
                        'disk_store', 'tape_store', 'wan_store', 'local_store',
                        'national_bandwidth', 'opn_bandwidth')
+      # Delay authz until we have database connection for name remapping.
 
-      for site in safe.kwargs['site_name']:
-        authz_match(role=["Global Admin", "Site Executive", "Site Admin"],
-                    group=["global"], site=[site])
+  def _authz(self, sites):
+    """Run late authorisation, remapping site names to canonical ones."""
+    remap = {}
+    for site in sites:
+      oldsite_authz_match(self.api, remap,
+                          role=["Global Admin", "Site Executive", "Site Admin"],
+                          group=["global"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -103,6 +108,7 @@ class Pledges(RESTEntity):
     :arg list opn_bandwidth: new values.
     :returns: a list with a dict in which *modified* gives number of objects
               inserted into the database, which is always *len(site_name).*"""
+    self._authz(site_name)
     return self.api.modify("""
       insert into resource_pledge
         (pledgeid, site, pledgedate, pledgequarter, cpu, job_slots,
