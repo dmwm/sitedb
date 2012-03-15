@@ -1,6 +1,6 @@
-from SiteDB.RESTServer import RESTEntity, restcall, rows
-from SiteDB.RESTTools import tools
-from SiteDB.RESTValidation import *
+from WMCore.REST.Server import RESTEntity, restcall, rows
+from WMCore.REST.Tools import tools
+from WMCore.REST.Validation import *
 from SiteDB.Regexps import *
 import cherrypy
 

@@ -1,4 +1,4 @@
-from SiteDB.RESTAuth import authz_match
+from WMCore.REST.Auth import authz_match
 import cherrypy
 
 def oldsite_authz_match(api, sites, role=[], group=[], site=[], verbose=False):

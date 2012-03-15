@@ -1,4 +1,4 @@
-from RESTServer import RESTFrontPage
+from WMCore.REST.Server import RESTFrontPage
 import os, re, cjson, SiteDB.Regexps
 
 class FrontPage(RESTFrontPage):

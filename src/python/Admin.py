@@ -1,8 +1,8 @@
 import os, cherrypy, cjson, socket, cx_Oracle
 from cherrypy.test import test, webtest, helper
-from SiteDB.RESTTest import fake_authz_headers, fake_authz_key_file
-from SiteDB.RESTMain import RESTMain
-from SiteDB.RESTTools import tools
+from WMCore.REST.Test import fake_authz_headers, fake_authz_key_file
+from WMCore.REST.Main import RESTMain
+from WMCore.REST.Tools import tools
 from SiteDB.Config import Config
 from SiteDB.Data import Data
 from SiteDB.DataAccounts import *

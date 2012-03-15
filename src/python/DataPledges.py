@@ -1,7 +1,7 @@
-from SiteDB.RESTServer import RESTEntity, restcall
+from WMCore.REST.Server import RESTEntity, restcall
 from SiteDB.SiteAuth import oldsite_authz_match
-from SiteDB.RESTTools import tools
-from SiteDB.RESTValidation import *
+from WMCore.REST.Tools import tools
+from WMCore.REST.Validation import *
 from SiteDB.Regexps import *
 from operator import itemgetter
 

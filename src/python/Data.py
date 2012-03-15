@@ -1,4 +1,4 @@
-from SiteDB.RESTServer import DatabaseRESTApi
+from WMCore.REST.Server import DatabaseRESTApi
 from SiteDB.DataCertificate import *
 from SiteDB.DataWhoAmI import *
 from SiteDB.DataRoles import *
