@@ -10,7 +10,7 @@ systems = \
   'SiteDB':
   {
     'python': ['SiteDB'],
-    'bin':    ['dist-patch', 'dist-unpatch', 'wmc-httpd'],
+    'bin':    ['dist-patch', 'dist-unpatch'],
     'data':   ['javascript/*.js', 'css/*.css', 'images/*.gif', 'templates/*.html']
   }
 }
