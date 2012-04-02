@@ -48,9 +48,9 @@ class Certificate(RESTEntity):
         nmatch += 1
 
     if nrow < 1 or nmatch < 1:
-      raise MissingObject()
+      raise MissingObject(info="Wrong account and/or password")
     elif nrow > 1 or nmatch > 1:
-      raise TooManyObjects()
+      raise TooManyObjects(info="Ambiguous account and password")
 
     return self.api.modify("""
       update contact set dn = :dn
