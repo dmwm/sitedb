@@ -230,7 +230,8 @@ class Schema(RESTEntity):
       # 'ORA-31608: specified object of type XYZZY not found' if there is no
       # information available of the given type, requiring protection below.
       "select dbms_metadata.get_dependent_ddl('OBJECT_GRANT', x.object_name,"
-      " sys_context('USERENV', 'CURRENT_SCHEMA')) from user_objects x",
+      " sys_context('USERENV', 'CURRENT_SCHEMA')) from user_objects x"
+      " where x.object_type != 'INDEX'",
 
       "select dbms_metadata.get_granted_ddl('SYSTEM_GRANT',"
       " sys_context('USERENV', 'CURRENT_SCHEMA')) from dual",
