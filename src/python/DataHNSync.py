@@ -129,24 +129,6 @@ class HNSync(RESTEntity):
 
     if passwords or contacts or deletions:
       trace = cherrypy.request.db["handle"]["trace"]
-      c, _ = self.api.execute("""delete from group_responsibility
-                                 where contact in
-                                   (select c.id from contact c
-                                    left join user_passwd u
-                                      on u.username = c.username
-                                    where u.passwd = '*')""")
-      trace and cherrypy.log("%s %d group responsibilities deleted"
-                             % (trace, c.rowcount))
-
-      c, _ = self.api.execute("""delete from site_responsibility
-                                 where contact in
-                                   (select c.id from contact c
-                                    left join user_passwd u
-                                      on u.username = c.username
-                                    where u.passwd = '*')""")
-      trace and cherrypy.log("%s %d site responsibilities deleted"
-                             % (trace, c.rowcount))
-
       trace and cherrypy.log("%s commit" % trace)
       cherrypy.request.db["handle"]["connection"].commit()
 
@@ -171,17 +153,17 @@ class HNSync(RESTEntity):
         row["surname"] = row["name"]
         row["name"] = "  " + row["name"]
 
-      if row["username"] not in users:
-        passwords.append(row)
-        contacts.append(row)
-      else:
-        user = users[row["username"]]
-        if row["passwd"] != user["passwd"]:
+      if row["passwd"] != '*':
+        deletions.discard(row["username"])
+        if row["username"] not in users:
           passwords.append(row)
-        if row["name"] != user["name"] or row["email"] != user["email"]:
           contacts.append(row)
-
-      deletions.discard(row["username"])
+        else:
+          user = users[row["username"]]
+          if row["passwd"] != user["passwd"]:
+            passwords.append(row)
+          if row["name"] != user["name"] or row["email"] != user["email"]:
+            contacts.append(row)
 
     for u in users.keys():
       if u.find("@") >= 0:
