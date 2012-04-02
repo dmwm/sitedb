@@ -322,14 +322,14 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
         quarters[year + "." + q] = year + "q" + q;
 
     var view = _views.attach("quarter", _self.doc);
-    view.validator("cpu", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("jobs", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("tape", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("disk", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("wan", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("local", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("nren", X.rxvalidate(gui.rx.FLOAT));
-    view.validator("opn", X.rxvalidate(gui.rx.FLOAT));
+    view.value("cpu", "0");   view.validator("cpu", X.rxvalidate(gui.rx.FLOAT));
+    view.value("jobs", "0");  view.validator("jobs", X.rxvalidate(gui.rx.FLOAT));
+    view.value("tape", "0");  view.validator("tape", X.rxvalidate(gui.rx.FLOAT));
+    view.value("disk", "0");  view.validator("disk", X.rxvalidate(gui.rx.FLOAT));
+    view.value("wan", "0");   view.validator("wan", X.rxvalidate(gui.rx.FLOAT));
+    view.value("local", "0"); view.validator("local", X.rxvalidate(gui.rx.FLOAT));
+    view.value("nren", "0");  view.validator("nren", X.rxvalidate(gui.rx.FLOAT));
+    view.value("opn", "0");   view.validator("opn", X.rxvalidate(gui.rx.FLOAT));
     view.on("add", "click", function(e) {
       _addPledge(state, site,
                  view.valueOf("quarter"), view.valueOf("cpu"), view.valueOf("jobs"),
