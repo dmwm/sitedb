@@ -9,6 +9,7 @@ from SiteDB.DataPledges import *
 from SiteDB.DataSoftware import *
 from SiteDB.DataUserGroups import *
 from SiteDB.DataUserSites import *
+from SiteDB.DataHNSync import *
 
 class Data(DatabaseRESTApi):
   """Server object for REST data access API."""
@@ -19,6 +20,7 @@ class Data(DatabaseRESTApi):
     :arg str mount: API URL mount point; passed to all entities."""
     DatabaseRESTApi.__init__(self, app, config, mount)
     self._add({ "whoami":                 WhoAmI(app, self, config, mount),
+                "hnsync":                 HNSync(app, self, config, mount),
                 "mycert":                 Certificate(app, self, config, mount),
                 "roles":                  Roles(app, self, config, mount),
                 "groups":                 Groups(app, self, config, mount),

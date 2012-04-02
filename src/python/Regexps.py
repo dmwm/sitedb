@@ -40,7 +40,8 @@ RX_PASSWD    = re.compile(r"^([*]|(RemovedUser--)?[A-Za-z0-9._/]{13,})$")
 RX_CPASSWD   = re.compile(r"^.{6,}$")
 
 #: Regular expression for human names.
-RX_NAME      = re.compile(r"(?iu)^([-\w ']*)$")
+RX_NAME      = re.compile(r"(?iu)^([-\w '.]*)$")
+RX_HN_NAME   = re.compile(r"(?iu)^([-\w '.(),\"]*)$")
 
 #: Regular expression for country names.
 RX_COUNTRY   = re.compile(r"(?iu)^([-\w, ']*)$")
