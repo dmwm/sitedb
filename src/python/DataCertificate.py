@@ -29,6 +29,9 @@ class Certificate(RESTEntity):
     using X509 certificate, and must provide the hypernews account and its
     clear-text password. If the password matches the one in the database,
     the DN for the account is changed to the one making this HTTP request.
+    Any previously existing association of the DN to any another account is
+    cleared before making the update, the DN can be associated to only one
+    account at at time, and vice versa, the account can have just one DN.
     For input validation requirements, see the field descriptions above.
     It is an error to attempt to update a non-existent account.
 
@@ -51,6 +54,10 @@ class Certificate(RESTEntity):
       raise MissingObject(info="Wrong account and/or password")
     elif nrow > 1 or nmatch > 1:
       raise TooManyObjects(info="Ambiguous account and password")
+
+    self.api.execute("""
+      update contact set dn = null where dn = :dn
+      """, dn = cherrypy.request.user['dn'])
 
     return self.api.modify("""
       update contact set dn = :dn
