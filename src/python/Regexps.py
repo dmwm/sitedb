@@ -53,7 +53,7 @@ RX_USAGE     = re.compile(r"^(LCG|OSG|ARC|other)$")
 RX_YES_NO    = re.compile(r"^[yn]$")
 
 #: Regular expression for X509 DNs.
-RX_DN        = re.compile(r"(?iu)^(/[A-Z]+=([-\w _@'.()]+))*$")
+RX_DN        = re.compile(r"(?iu)^(/[A-Z]+=([-\w _@'.()/]+))*$")
 
 #: Regular expression for e-mail addresses.
 RX_EMAIL     = re.compile(r"(?i)^([-A-Z0-9_.%+]+@([-A-Z0-9]+\.)+[A-Z]{2,5})?$")
