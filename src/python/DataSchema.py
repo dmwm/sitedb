@@ -10,7 +10,8 @@ import os, string, random
 def mkpasswd():
   """Utility to generate new passwords for roles."""
   passchars = string.letters + string.digits
-  return ''.join(random.choice(passchars) for _ in xrange(10))
+  return ''.join(random.choice(string.letters) for _ in xrange(2)) + \
+         ''.join(random.choice(passchars) for _ in xrange(8))
 
 class Schema(RESTEntity):
   """REST entity which represents the SiteDB schema in the database, both
@@ -353,6 +354,9 @@ class Schema(RESTEntity):
               the 'ok' is preceded by dictionaries with role/password pairs."""
     rows = []
     for stmt in self._schema.split(";"):
+      stmt = stmt.strip()
+      if not stmt:
+        continue
       while stmt.upper().find("IDENTIFIED BY @PASSWORD@") >= 0:
         passwd = mkpasswd()
         rows.append({ stmt: passwd })
@@ -421,7 +425,7 @@ class Schema(RESTEntity):
     :arg str action: delete action to perform.
     :returns: a simple 'ok' object on success."""
     some_objs = ['SEQUENCE', 'MATERIALIZED VIEW', 'VIEW', 'TABLE',
-		 'INDEX', 'SYNONYM', 'TRIGGER']
+		 'SYNONYM', 'TRIGGER']
     more_objs = ['FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY']
     if action == 'all':
       condition = " where object_type in (%s)" % \
@@ -434,13 +438,12 @@ class Schema(RESTEntity):
       raise RuntimeError("Internal error, invalid 'action'")
 
     rows = []
-    for type in types:
-      c, _ = self.api.execute("select object_type, object_name"
-                              " from user_objects%s" % condition)
-      for type, name in c:
-        rows.append("Dropping %s %s" % (type, name))
-	cascade = (type == 'TABLE' and ' cascade constraints') or ''
-        self.api.execute("drop %s %s%s" % (type, name, cascade))
+    c, _ = self.api.execute("select object_type, object_name"
+                            " from user_objects%s" % condition)
+    for type, name in c:
+      rows.append("Dropping %s %s" % (type, name))
+      cascade = (type == 'TABLE' and ' cascade constraints') or ''
+      self.api.execute("drop %s %s%s" % (type, name, cascade))
 
     if action == 'all':
       c, _ = self.api.execute("select granted_role from user_role_privs"

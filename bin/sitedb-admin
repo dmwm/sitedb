@@ -24,8 +24,10 @@ def run_client(action):
   finally:
     cherrypy.engine.exit()
 
-user = "cms_lat"
-service = "devdb10"
+user = "cms_sitedb"
+service = "devdb11"
+#action = "load-schema"
+#action = "delete-all"
 action = "show-schema"
 
 init_server_auth(user, service)

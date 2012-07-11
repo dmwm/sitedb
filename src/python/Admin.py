@@ -14,7 +14,7 @@ from getpass import getpass
 server = None
 authz_key = None
 AUTH = { 'admin': { '*': { 'type': cx_Oracle,
-                           'trace': True,
+                           'trace': False,
                            'schema': "",
                            'clientid': "sitedb-admin@%s" % socket.getfqdn().lower(),
                            'liveness': "select sysdate from dual",
@@ -126,7 +126,7 @@ class AdminClient(helper.CPWebCase):
     self.getPage("/sitedb/admin/%s" % to, method="PUT", body=b, headers=h+authz)
     self.assertStatus("200 OK")
     self.assertHeader("X-REST-Status", "100")
-    self.assertMatchesBody(r"""\{ "modified": %d \}""" % len(args))
+    print "***", self.body
 
   def load_schema(self):
     """Insert schema plus essential seed data.
@@ -141,28 +141,18 @@ class AdminClient(helper.CPWebCase):
     self._put("roles", {"title": "Global Admin"})
     self._put("groups", {"name": "global"})
     self._put("accounts",
-              {"username": "metson",   "passwd": "*"},
-	      {"username": "lat",      "passwd": "*"},
-	      {"username": "pkreuzer", "passwd": "*"},
-	      {"username": "rossman",  "passwd": "*"})
+	      {"username": "diego",    "passwd": "*"},
+	      {"username": "pkreuzer", "passwd": "*"})
     self._put("people",
-	      {"email": "simon.metson@cern.ch", "forename": "Simon", "surname": "Metson",
-	       "dn": "/C=UK/O=eScience/OU=Bristol/L=IS/CN=simon metson",
-	       "username": "metson", "phone1": "", "phone2": "", "im_handle": ""},
-	      {"email": "lat@cern.ch", "forename": "Lassi", "surname": "Tuura",
-	       "dn": "/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=lat/CN=437145/CN=Lassi Tuura",
-	       "username": "lat", "phone1": "", "phone2": "", "im_handle": ""},
+	      {"email": "diego@cern.ch", "forename": "Diego", "surname": "da Silva Gomes",
+	       "dn": "/DC=org/DC=doegrids/OU=People/CN=Diego da Silva Gomes 849253",
+	       "username": "diego", "phone1": "", "phone2": "", "im_handle": ""},
 	      {"email": "peter.kreuzer@cern.ch", "forename": "Peter", "surname": "Kreuzer",
 	       "dn": "/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=pkreuzer/CN=406463/CN=Peter Kreuzer",
-	       "username": "pkreuzer", "phone1": "", "phone2": "", "im_handle": ""},
-	      {"email": "rossman@fnal.gov", "forename": "Paul", "surname": "Rossman",
-	       "dn": "/DC=org/DC=doegrids/OU=People/CN=Paul Rossman 364403",
-	       "username": "rossman", "phone1": "", "phone2": "", "im_handle": ""})
+	       "username": "pkreuzer", "phone1": "", "phone2": "", "im_handle": ""})
     self._put("group-responsibilities",
-	      {"contact": "simon.metson@cern.ch", "role": "Global Admin", "group": "global"},
-	      {"contact": "lat@cern.ch", "role": "Global Admin", "group": "global"},
-	      {"contact": "peter.kreuzer@cern.ch", "role": "Global Admin", "group": "global"},
-	      {"contact": "rossman@fnal.gov", "role": "Global Admin", "group": "global"})
+	      {"username": "diego", "role": "Global Admin", "user_group": "global"},
+	      {"username": "pkreuzer", "role": "Global Admin", "user_group": "global"})
 
 def init_server_auth(user, service, password = None, schema = None):
   """Configure authentication and schema information.
