@@ -359,18 +359,21 @@ var SiteDB = function(Y, views, debug)
 
     X.applyContent(Y.one("#my-roles"), content);
 
-    // If this is a global admin, add links for site/person creation.
     var display = "none";
-    if (_state.isGlobalAdmin())
+    // If this is an operator or admin, add link for person creation.
+    if (_state.isSitedbOperator() || _state.isGlobalAdmin())
     {
       display = "";
       content = "<h3>Administration</h3>"
                 + "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
                 + X.encodeAsPath(instance) + "/people/new'>"
-                + "Create person</a></p>"
-                + "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
-                + X.encodeAsPath(instance) + "/sites/new'>"
-                + "Create site</a></p>";
+                + "Create person</a></p>";
+
+      // If this is a global admin, add link to site creation too.
+      if (_state.isGlobalAdmin())
+        content += "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
+                   + X.encodeAsPath(instance) + "/sites/new'>"
+                   + "Create site</a></p>";
     }
 
     X.applyContentStyle(Y.one("#my-admin"), "", content, "display", display);

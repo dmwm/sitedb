@@ -212,7 +212,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     view.value("surname", (p && p.surname) || "");
     view.value("forename", (p && p.forename) || "");
     view.value("dn", (p && p.dn) || "");
-    view.enable("dn", state.isGlobalAdmin());
+    view.enable("dn", state.isGlobalAdmin() || state.isSitedbOperator());
     view.value("account", (p && p.username) || "");
     view.value("email", (p && p.email) || "");
     view.value("phone1", (p && p.phone1) || "");
@@ -360,7 +360,7 @@ var People = X.inherit(View, function(Y, gui, rank)
                    + (! p.im_handle ? "" : " | IM: " + Y.Escape.html(p.im_handle)));
 
       var content = "";
-      if (state.whoami.person == p || state.isGlobalAdmin())
+      if (state.whoami.person == p || state.isGlobalAdmin() || state.isSitedbOperator())
         content += _self.personLink(instance, p, "Edit...", "/edit");
       if (state.isGlobalAdmin())
         content += " | " + _self.personLink(instance, p, "Delete", "/remove");
@@ -401,7 +401,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     view.render();
   };
 
-  /** Page for global admins to create new people records. */
+  /** Page for global admins and sitedb ops to create new people records. */
   this.create = function(req)
   {
     var instance = unescape(req.params.instance);
@@ -409,7 +409,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     _self.title(state, "New person", "People");
     _self.loading(state);
 
-    if (state.isGlobalAdmin())
+    if (state.isGlobalAdmin() || state.isSitedbOperator())
       _edit(true, state, "new person", null);
     else
     {
@@ -491,7 +491,8 @@ var People = X.inherit(View, function(Y, gui, rank)
     if (! state.whoami
         || ! state.whoami.person
         || (p && p == state.whoami.person)
-        || (p && state.isGlobalAdmin()))
+        || (p && state.isGlobalAdmin())
+        || (p && state.isSitedbOperator()))
       _edit(false, state, (p ? p.fullname : person), p);
     else if (p && state.whoami)
     {

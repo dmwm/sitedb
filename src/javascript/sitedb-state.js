@@ -509,6 +509,12 @@ var State = function(Y, gui, instance)
     return _self.hasGroupRole("global-admin", "global");
   };
 
+  /** Check if the user is a sitedb operator. */
+  this.isSitedbOperator = function()
+  {
+    return _self.hasGroupRole("operator","sitedb");
+  };
+
   /** Require list of state elements to be loaded. Refreshes those that
       are out of date and not currently pending load. */
   this.require = function()

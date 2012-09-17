@@ -4,6 +4,7 @@ from WMCore.REST.Tools import tools
 from WMCore.REST.Validation import *
 from SiteDB.Regexps import *
 from operator import itemgetter
+from cherrypy import HTTPError
 import cherrypy
 
 class People(RESTEntity):
@@ -44,8 +45,11 @@ class People(RESTEntity):
       mydn = cherrypy.request.user['dn']
       me = cherrypy.request.user['login']
       for user, dn in zip(safe.kwargs['username'], safe.kwargs['dn']):
-        (method == 'POST' and user == me and dn == mydn) or \
-          authz_match(role=["Global Admin"], group=["global"])
+        if (method != 'POST' or user != me or dn != mydn):
+          try:
+            authz_match(role=["Global Admin"], group=["global"])
+          except HTTPError:
+            authz_match(role=["Operator"], group=["SiteDB"])
 
     elif method == 'DELETE':
       validate_strlist('username',  param, safe, RX_USER)
