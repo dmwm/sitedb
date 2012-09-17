@@ -524,29 +524,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     else
     {
       view = _views.attach("mycert", _self.doc);
-      view.validator("account", X.rxvalidate(gui.rx.USER));
-      view.validator("password", X.rxvalidate(gui.rx.CPASSWD));
-      view.once(function() {
-        view.node("account").plug(Y.Plugin.AutoComplete, {
-          source: function() { return state.people; },
-          resultTextLocator: function(p) { return p.username || ""; },
-          resultFilters: "startsWith",
-          resultHighlighter: "startsWith",
-          maxResults: 25
-        });
-      });
-
-      view.on("associate", "click", function(e) {
-        _mycert(state, view.valueOf("account"), view.valueOf("password"));
-      });
-
-      view.on("password", "keypress", function(e) {
-        if (e.keyCode == 13)
-          _mycert(state, view.valueOf("account"), view.valueOf("password"));
-      });
-
       view.content("dn", Y.Escape.html(state.whoami.dn));
-      view.focus("account");
     }
 
     view.render();
