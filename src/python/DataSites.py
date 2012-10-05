@@ -400,11 +400,28 @@ class SiteResources(RESTEntity):
               inserted into the database, which is always *len(site_name).*"""
 
     self._authz(site_name)
-    return self.api.modify("""
-      insert into resource_element (id, site, fqdn, type, is_primary)
-      select resource_element_sq.nextval, s.id, :fqdn, :type, :is_primary
-      from site s where s.name = :site_name
-      """, site_name=site_name, type=type, fqdn=fqdn, is_primary=is_primary)
+
+    # Update both the new and the old table to be compatible with v1.
+    # The old one could be withdraw once v1 gets fully deprecated.
+    binds = self.api.bindmap(site_name = site_name, type = type,
+                             fqdn = fqdn, is_primary = is_primary)
+    c, _ = self.api.executemany("""
+      insert all
+      into resource_element (id, site, fqdn, type, is_primary)
+        values (resource_element_sq.nextval, site_id, :fqdn, :type, :is_primary)
+      into resource_cms_name_map (resource_id, cms_name_id)
+        values (resource_element_sq.nextval, cms_name_id)
+      select s.id site_id, ss.cms_name_id cms_name_id
+        from site s join site_cms_name_map ss on s.id = ss.site_id
+        where s.name = :site_name
+      """, binds)
+    self.api.rowstatus(c, 2*len(binds))
+
+    result = rows([{ "modified": c.rowcount / 2 }])
+    trace = request.db["handle"]["trace"]
+    trace and cherrypy.log("%s commit" % trace)
+    request.db["handle"]["connection"].commit()
+    return result
 
   @restcall
   def delete(self, site_name, type, fqdn, is_primary):
