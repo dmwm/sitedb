@@ -104,7 +104,8 @@ class People(RESTEntity):
 
   @restcall
   def put(self, username, email, forename, surname, dn, phone1, phone2, im_handle):
-    """Insert new people. The caller needs to have global admin privileges.
+    """Insert new people.
+    The caller needs to have global admin or operator privileges.
     For input validation requirements, see the field descriptions above. When
     more than one argument is given, there must be equal number of arguments
     for all the parameters. It is an error to attempt to insert an already
@@ -122,7 +123,7 @@ class People(RESTEntity):
               inserted into the database, which is always *len(username).*"""
     c, _ = self.api.executemany("""
       merge into user_passwd u using dual on (u.username = :username)
-      when not matched then insert (username, passwd) values (:username, '*')
+      when not matched then insert (username, passwd) values (:username, 'NeedsToBeUpdated')
       """, self.api.bindmap(username = username))
 
     return self.api.modify("""

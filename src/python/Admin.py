@@ -141,8 +141,8 @@ class AdminClient(helper.CPWebCase):
     self._put("roles", {"title": "Global Admin"})
     self._put("groups", {"name": "global"})
     self._put("accounts",
-	      {"username": "diego",    "passwd": "*"},
-	      {"username": "pkreuzer", "passwd": "*"})
+	      {"username": "diego",    "passwd": "NeedsToBeUpdated"},
+	      {"username": "pkreuzer", "passwd": "NeedsToBeUpdated"})
     self._put("people",
 	      {"email": "diego@cern.ch", "forename": "Diego", "surname": "da Silva Gomes",
 	       "dn": "/DC=org/DC=doegrids/OU=People/CN=Diego da Silva Gomes 849253",

@@ -5,10 +5,10 @@ insert into tier (id, pos, name) values (tier_sq.nextval, 1, 'Tier 1');
 insert into tier (id, pos, name) values (tier_sq.nextval, 2, 'Tier 2');
 insert into tier (id, pos, name) values (tier_sq.nextval, 3, 'Tier 3');
 
-insert into user_passwd (username, passwd) values ('metson', '*');
-insert into user_passwd (username, passwd) values ('lat', '*');
-insert into user_passwd (username, passwd) values ('pkreuzer', '*');
-insert into user_passwd (username, passwd) values ('rossman', '*');
+insert into user_passwd (username, passwd) values ('metson', 'NeedsToBeUpdated');
+insert into user_passwd (username, passwd) values ('lat', 'NeedsToBeUpdated');
+insert into user_passwd (username, passwd) values ('pkreuzer', 'NeedsToBeUpdated');
+insert into user_passwd (username, passwd) values ('rossman', 'NeedsToBeUpdated');
 
 insert into contact (id, email, forename, surname, dn, username, phone1, phone2, im_handle)
   values (contact_sq.nextval, 'simon.metson@cern.ch', 'Simon', 'Metson',
