@@ -356,12 +356,8 @@ class SiteResources(RESTEntity):
       validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('type', param, safe, RX_RES_TYPE)
       validate_strlist('fqdn', param, safe, RX_FQDN)
-
-    if method == 'PUT':
       validate_strlist('is_primary', param, safe, RX_YES_NO)
       validate_lengths(safe, 'site_name', 'type', 'fqdn', 'is_primary')
-    elif method == 'DELETE':
-      validate_lengths(safe, 'site_name', 'type', 'fqdn')
 
     # Delay authz until we have database connection for name remapping.
 
@@ -411,7 +407,7 @@ class SiteResources(RESTEntity):
       """, site_name=site_name, type=type, fqdn=fqdn, is_primary=is_primary)
 
   @restcall
-  def delete(self, site_name, type, fqdn):
+  def delete(self, site_name, type, fqdn, is_primary):
     """Delete site resource associations. Site executive / admin can update
     their own site, global admin can update resources for all the sites. When
     more than one argument is given, there must be an equal number of arguments
@@ -422,6 +418,7 @@ class SiteResources(RESTEntity):
     :arg list site_name: values to delete;
     :arg list type: values to delete;
     :arg list fqdn: values to delete;
+    :arg list is_primary: value to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(site_name).*"""
 
@@ -431,7 +428,9 @@ class SiteResources(RESTEntity):
       where site = (select s.id from site s where s.name = :site_name)
         and fqdn = :fqdn
         and type = :type
-      """, site_name=site_name, type=type, fqdn=fqdn)
+        and is_primary = :is_primary
+        and rownum=1
+      """, site_name=site_name, type=type, fqdn=fqdn, is_primary=is_primary)
 
 ######################################################################
 ######################################################################

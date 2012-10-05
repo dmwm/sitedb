@@ -142,18 +142,20 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
     var type = X.getDOMAttr(x.node, "x-type");
     var fqdn = X.getDOMAttr(x.node, "x-fqdn");
+    var is_primary = X.getDOMAttr(x.node, "x-is_primary");
     if (! (type in obj.resources))
       return;
 
-    var r = Y.Array.find(obj.resources[type], function(i) { return i.fqdn == fqdn; });
+    var r = Y.Array.find(obj.resources[type], function(i) { return i.fqdn == fqdn && i.is_primary == is_primary; });
     if (! r)
       return;
 
     _state.modify([{
       method: "DELETE", entity: "site-resources",
-      data: { "site_name": obj.site_name, "type": type, "fqdn": fqdn },
+      data: { "site_name": obj.site_name, "type": type, "fqdn": fqdn, "is_primary": is_primary },
       message: "Removing site resource " + Y.Escape.html(obj.canonical_name) + " "
-               + Y.Escape.html(fqdn) + "/" + Y.Escape.html(type)
+               + Y.Escape.html(fqdn) + "/" + Y.Escape.html(type) + "/" 
+               + Y.Escape.html(is_primary)
     }]);
   };
 
@@ -585,6 +587,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
                        + " x-site='" + X.encodeAsPath(site) + "'"
                        + " x-type='" + X.encodeAsPath(kind) + "'"
                        + " x-fqdn='" + X.encodeAsPath(res.fqdn) + "'"
+                       + " x-is_primary='" + X.encodeAsPath(res.is_primary) + "'"
                        + "><span class='rmicon'></span></span>"
                        + Y.Escape.html(res.fqdn)
                        + "</td></tr>";
