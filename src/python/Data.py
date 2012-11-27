@@ -10,6 +10,7 @@ from SiteDB.DataSoftware import *
 from SiteDB.DataUserGroups import *
 from SiteDB.DataUserSites import *
 from SiteDB.DataHNSync import *
+from SiteDB.DataLdapSync import *
 
 class Data(DatabaseRESTApi):
   """Server object for REST data access API."""
@@ -21,6 +22,7 @@ class Data(DatabaseRESTApi):
     DatabaseRESTApi.__init__(self, app, config, mount)
     self._add({ "whoami":                 WhoAmI(app, self, config, mount),
                 "hnsync":                 HNSync(app, self, config, mount),
+                "ldapsync":               LdapSync(app, self, config, mount),
                 "mycert":                 Certificate(app, self, config, mount),
                 "roles":                  Roles(app, self, config, mount),
                 "groups":                 Groups(app, self, config, mount),

@@ -33,6 +33,9 @@ RX_TIER      = re.compile(r"^Tier \d+$")
 RX_USER      = re.compile(r"^(?:[a-z0-9_]+(?:\.notcms|\.nocern)?"
                           r"|[a-z0-9]+@(?:[-a-z0-9]+\.)+[a-z]{2,5})$")
 
+#: Regular expression for person Id.
+RX_UID       = re.compile(r"^[0-9]+$")
+
 #: Regular expression for passwords.
 RX_PASSWD    = re.compile(r"^([*]|(RemovedUser--)?[A-Za-z0-9._/]{13,})$")
 
@@ -54,6 +57,10 @@ RX_YES_NO    = re.compile(r"^[yn]$")
 
 #: Regular expression for X509 DNs.
 RX_DN        = re.compile(r"(?iu)^(/[A-Z]+=([-\w _@'.()/]+))*$")
+
+#: Regular expression for reasonable subset of LDAP DNs (RFC 4514).
+RX_LDAPDN    = re.compile(r"(?iu)^([A-Z]+=([-\w _@'.()/]+),?)*$")
+#RX_ALTDN     = re.compile(r"(?iu)^X509:.*<S>(([A-Z]+=([-\w _@'.()/]+),?)*(?<!Kerberosservice))$")
 
 #: Regular expression for e-mail addresses.
 RX_EMAIL     = re.compile(r"(?i)^[-A-Z0-9_.%+]+@([-A-Z0-9]+\.)+[A-Z]{2,5}$")
