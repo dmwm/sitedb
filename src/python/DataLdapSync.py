@@ -298,11 +298,12 @@ class LdapSyncThread(Thread):
         # newdn is the reversed elements from full name + personid + dn
         newdn = ','.join(('CN='+ u['name'] +',CN='+ perid +','+ u['dn']).split(',')[::-1])
         # in case non-Cern DN was mapped to the account, use it as newdn instead
-        for altdn in attrs['altSecurityIdentities']:
-          m = self._validate(altdn, basestring, self.RX_ALTDN, now)
-          if not m: continue
-          # get the last mapped DN not matching the Kerberosservice|CAs
-          newdn = m.group(1)
+        if 'altSecurityIdentities' in attrs.keys():
+          for altdn in attrs['altSecurityIdentities']:
+            m = self._validate(altdn, basestring, self.RX_ALTDN, now)
+            if not m: continue
+            # get the last mapped DN not matching the Kerberosservice|CAs
+            newdn = m.group(1)
         u['dn'] = '/'+newdn.replace(',','/')
 
         # add this user to the bulk data to be updated
