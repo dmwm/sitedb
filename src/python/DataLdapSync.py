@@ -340,7 +340,7 @@ class LdapSyncThread(Thread):
       srv_ctrls[0].size = 1000 # dont necessarily need to match the server limit
       s = l.search_ext('OU=Users,OU=Organic Units,DC=cern,DC=ch',
                        ldap.SCOPE_SUBTREE,
-                       '(memberOf=CN=cms-zh,OU=e-groups,OU=Workgroups,DC=cern,DC=ch)',
+                       '(memberOf:1.2.840.113556.1.4.1941:=CN=cms-authorized-users,OU=e-groups,OU=Workgroups,DC=cern,DC=ch)',
                        ['sAMAccountName','displayName','employeeID','mail','altSecurityIdentities','userAccountControl'],
                        serverctrls=srv_ctrls,
                        sizelimit=0)
