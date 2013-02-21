@@ -119,7 +119,7 @@ var People = X.inherit(View, function(Y, gui, rank)
                 + "<dd class='faded' style='font-size:.9em'>"
                 + Y.Escape.html(p.im_handle) + "</dd></dl>")
            + (! p.username ? ""
-              : "<dl class='mini'><dt title='CMS HyperNews Account'>A</dt>"
+              : "<dl class='mini'><dt title='CERN Account'>A</dt>"
                 + "<dd class='faded' style='font-size:.9em'>"
                 + Y.Escape.html(p.username) + "</dd></dl>")
            + (! p.dn ? ""
@@ -238,17 +238,6 @@ var People = X.inherit(View, function(Y, gui, rank)
     view.render();
   };
 
-  /** Action handler for account-certificate association. */
-  var _mycert = function(state, account, password)
-  {
-    if (account && password)
-      state.modify([{
-        method: "POST", entity: "mycert",
-        data: { "username": account, "passwd": password },
-        message: "Associating " + Y.Escape.html(account)
-      }]);
-  };
-
   /** Respond to internal navigation. Resets in-charge flag so that we
       reset search field and other local edit contents. */
   this.prenavigate = function()
@@ -338,7 +327,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
+    var p = ((person in state.peopleByAcc) && state.peopleByAcc[person]);
     _self.title(state, p ? p.fullname : person, "People");
     _self.loading(state);
 
@@ -432,7 +421,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
+    var p = ((person in state.peopleByAcc) && state.peopleByAcc[person]);
     _self.title(state, "Remove", p ? p.fullname : person, "People");
     _self.loading(state);
 
@@ -484,7 +473,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
-    var p = ((person in state.peopleByHN) && state.peopleByHN[person]);
+    var p = ((person in state.peopleByAcc) && state.peopleByAcc[person]);
     _self.title(state, "Edit", p ? p.fullname : person, "People");
     _self.loading(state);
 
@@ -510,7 +499,7 @@ var People = X.inherit(View, function(Y, gui, rank)
       _edit(false, state, (p ? p.fullname : person), null);
   };
 
-  /** Page for associating a hypernews account and certificate. */
+  /** Page for associating a cern account and certificate. */
   this.mycert = function(req)
   {
     var instance = unescape(req.params.instance);

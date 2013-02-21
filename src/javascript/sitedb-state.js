@@ -43,8 +43,8 @@ var State = function(Y, gui, instance)
   /** Current site data organised by the CMS site name. */
   this.sitesByCMS = {};
 
-  /** Current people data organised by HN account. */
-  this.peopleByHN = {};
+  /** Current people data organised by CERN account. */
+  this.peopleByAcc = {};
 
   /** Current people data as a flat list. */
   this.people = [];
@@ -85,7 +85,7 @@ var State = function(Y, gui, instance)
   var _rebuild = function()
   {
     var whoami = null;
-    var people = [], byhn = {};
+    var people = [], byacc = {};
     var roles = {}, groups = {};
     var tiers = {}, byname = {}, bycms = {};
 
@@ -113,7 +113,7 @@ var State = function(Y, gui, instance)
 	p.fullname = p.forename + " " + p.surname;
       if (whoami && whoami.login && p.username == whoami.login)
 	whoami.person = p;
-      byhn[p.username] = p;
+      byacc[p.username] = p;
       people.push(p);
     });
 
@@ -196,11 +196,11 @@ var State = function(Y, gui, instance)
 
     // Site responsibilities; associates site, role and person.
     Y.each(_data['site-responsibilities'].value || [], function(i) {
-      if (i.site_name in byname && i.username in byhn && i.role in roles)
+      if (i.site_name in byname && i.username in byacc && i.role in roles)
       {
         var site = byname[i.site_name];
 	var role = roles[i.role];
-        var person = byhn[i.username];
+        var person = byacc[i.username];
 
         var r = site.responsibilities;
         if (! (i.role in r))
@@ -220,11 +220,11 @@ var State = function(Y, gui, instance)
 
     // Group responsibilities; associates group, role and person.
     Y.each(_data['group-responsibilities'].value || [], function(i) {
-      if (i.user_group in groups && i.username in byhn && i.role in roles)
+      if (i.user_group in groups && i.username in byacc && i.role in roles)
       {
         var group = groups[i.user_group];
 	var role = roles[i.role];
-        var person = byhn[i.username];
+        var person = byacc[i.username];
 
         group.members.push(person);
 
@@ -263,7 +263,7 @@ var State = function(Y, gui, instance)
       group.members.sort(_self.sortPerson);
     });
 
-    Y.each(byhn, function(person) {
+    Y.each(byacc, function(person) {
       Y.each(person.roles, function(v) {
         v.site.sort(_self.sortSite);
         v.group.sort(_self.sortName);
@@ -295,7 +295,7 @@ var State = function(Y, gui, instance)
     _self.sitesByName = byname;
     _self.sitesByCMS = bycms;
     _self.people = people;
-    _self.peopleByHN = byhn;
+    _self.peopleByAcc = byacc;
     _self.rolesByTitle = roles;
     _self.groupsByName = groups;
     _self.whoami = whoami;

@@ -24,7 +24,7 @@ class WhoAmI(RESTEntity):
       The full name.
 
     ``login``
-      CMS HyperNews account.
+      CERN account.
 
     ``dn``
       X509 certificate distinguished name.
@@ -32,7 +32,7 @@ class WhoAmI(RESTEntity):
     ``method``
       Authentication method, one of ``X509Cert``, ``X509Proxy``, ``HNLogin``,
       ``HostIP``, ``AUCookie`` or ``None``. In practice for SiteDB it will
-      only be one of the first three since the latter three are not allowed
+      only be one of the first two since the latter three are not allowed
       authentication methods for SiteDB and this REST entity.
 
     ``roles``

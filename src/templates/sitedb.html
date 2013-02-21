@@ -42,9 +42,8 @@
   ></script
   ><script type="text/x-template" id="t-view-no-x509"
    ><h2>Not logged in with X509 certificate</h2
-   ><p>Please <a href='/auth/logout'>log out</a> from your HN account and
-      access this page with X509 certificate you want to associate to your
-      HyperNews account. <a href='/auth/trouble'>Trouble-shooting guide</a>
+   ><p>Please access this page with a valid X509 certificate.
+      <a href='/auth/trouble'>Trouble-shooting guide</a>
       will help you if you tried and failed.</p
   ></script
   ><script type="text/x-template" id="t-view-sites-main"
@@ -228,13 +227,13 @@
    ></div
   ></script
   ><script type="text/x-template" id="t-view-people-mycert"
-   ><h2>Associate your certificate to a CMS HyperNews account</h2
+   ><h2>Associate a certificate to your CERN primary account</h2
    ><table style='font-size:1.2em'><tbody
-     ><tr><td>Certificate</td><td x-element='dn'></td></tr
+     ><tr><td>Certificate DN:</td><td x-element='dn'></td></tr
    ></tbody></table
-   ><br \><p>It is no longer possible to associate a certificate to a HyperNews
-      account through SiteDB. Please open a 
-      <a href='https://svnweb.cern.ch/trac/CMSDMWM/newticket?component=SiteDB&amp;summary=Associate%20certificate%20to%20CMS%20HyperNews%20account&amp;description=Specify%20your%20certificate%20DN%20and%20the%20HyperNews%20account%20username%20here.&amp;target=_new'>ticket</a> instead.</p
+   ><br \><p>Make sure it is the only certificate mapped to your CERN account 
+     <a href='https://accountmap.web.cern.ch/accountmap/Mapping/Certificates.aspx'>here</a>.
+     Open a <a href='https://savannah.cern.ch/support/?func=additem&group=cmscompinfrasup&category_id=123&privacy=1&assigned_to=4435&custom_sb2=102&custom_sb1=100&severity=5&summary=DN%20mapping%20issue'>ticket</a> and provide the certificate DN above in case of problems.</p
   ></script
   ><script type="text/x-template" id="t-view-people-remove"
    ><div style='margin-bottom:1em'
@@ -259,7 +258,7 @@
        ><tr><td>Certificate</td><td><input x-element='dn' type='text'
           placeholder='/DC=abc/DC=def/OU=ghi/OU=jkl/CN=Your Name'
           style='width:40em' /></td></tr
-       ><tr><td>HyperNews Account</td><td><input x-element='account'
+       ><tr><td>CERN Account</td><td><input x-element='account'
           type='text' placeholder='Login name' /></td></tr
        ><tr><td>E-mail</td><td><input x-element='email' type='text'
           placeholder='you@domain.name' /></td></tr

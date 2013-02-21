@@ -181,7 +181,7 @@ create sequence s_v2_role increment by 1 start with 1;
 /* 
  * An abstract group humans can belong to e.g. 'higgs','top','BSM','global' etc.
  * Groups have a type - comp, dpg, pag, pog and an optional contact (e.g. an 
- * email or a hypernews address)
+ * e-mail address)
 */
 create table t_v2_user_group (
   id      number(10) not null,

@@ -106,7 +106,7 @@ class Schema(RESTEntity):
      clients to share the same database account but be given varying degree
      of privileges to the tables. The longer-term plan is to use this feature
      to grant the web site write access only to parts of the database, and the
-     hypernews synchronisation restricted access to only the tables it needs.
+     ldap synchronisation restricted access to only the tables it needs.
 
   .. note::
 

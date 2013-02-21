@@ -23,8 +23,7 @@ class People(RESTEntity):
   *im_handle*          instant messaging handle  string matching :obj:`.RX_IM`        optional
   ==================== ========================= ==================================== ====================
 
-  The *username* must be either a CERN account, or a CMS HyperNews external
-  account, or a pseudo-account for services."""
+  The *username* must be a CERN account or a pseudo-account for services."""
   def validate(self, apiobj, method, api, param, safe):
     """Validate request input data."""
     if method in ('GET', 'HEAD'):

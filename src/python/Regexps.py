@@ -44,7 +44,6 @@ RX_CPASSWD   = re.compile(r"^.{6,}$")
 
 #: Regular expression for human names.
 RX_NAME      = re.compile(r"(?iu)^([-\w '.]*)$")
-RX_HN_NAME   = re.compile(r"(?iu)^([-\w '.(),\"]*)$")
 
 #: Regular expression for country names.
 RX_COUNTRY   = re.compile(r"(?iu)^([-\w, ']*)$")
