@@ -62,7 +62,7 @@ RX_LDAPDN    = re.compile(r"(?iu)^([A-Z]+=([-\w _@'.()/]+),?)*$")
 #RX_ALTDN     = re.compile(r"(?iu)^X509:.*<S>(([A-Z]+=([-\w _@'.()/]+),?)*(?<!Kerberosservice))$")
 
 #: Regular expression for e-mail addresses.
-RX_EMAIL     = re.compile(r"(?i)^[-A-Z0-9_.%+]+@([-A-Z0-9]+\.)+[A-Z]{2,5}$")
+RX_EMAIL     = re.compile(r"(?i)^[-A-Z0-9_'.%+]+@([-A-Z0-9]+\.)+[A-Z]{2,5}$")
 
 #: Regular expression for phone numbers.
 RX_PHONE     = re.compile(r"^([0-9]{5,7}|\+[0-9]+([- .]?[0-9]+)*)?$")

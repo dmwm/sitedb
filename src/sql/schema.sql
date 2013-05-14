@@ -158,7 +158,7 @@ create table t_v2_contact (
     foreign key (username) references t_v2_user_passwd (username)
     on delete set null
   constraint check_email_is_valid check (regexp_like(email,
-'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$'))
+'^[A-Za-z0-9._''%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$'))
 
 );
 create sequence s_v2_contact increment by 1 start with 1;
