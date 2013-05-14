@@ -140,13 +140,13 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     if (! (role in _state.rolesByTitle)
         || (site && ! (site in _state.sitesByCMS))
         || (group && ! (group in _state.groupsByName))
-        || ! (person in _state.peopleByHN))
+        || ! (person in _state.peopleByAcc))
       return;
 
     role = _state.rolesByTitle[role];
     site = (site && _state.sitesByCMS[site]);
     group = (group && _state.groupsByName[group]);
-    person = _state.peopleByHN[person];
+    person = _state.peopleByAcc[person];
 
     if (group)
       _state.modify([{
