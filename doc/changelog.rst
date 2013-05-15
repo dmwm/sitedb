@@ -1,6 +1,39 @@
 SiteDB release notes
 ====================
 
+2.4.2
+-----
+
++ Fix user interface problem when removing roles of a person;
++ Allow quotes in e-mail address since it is allowed by CERN too;
++ Remove the dist-patch* scripts and instead use the one comming with wmcore.
+
+2.4.1
+-----
+
++ Update documentation to include instructions for the v1 to v2 migration;
++ Remove support for hypernews and password related features;
++ Make the certificate association page to point to the CERN/SSO
+  mapping page;
++ Use LDAP magic number to include subgroups and set the e-group
+  to something the http group can control;
++ Fix bug in the DN fetching by first checking if there is an alternative DN to use.
+
+2.4.0
+-----
+
++ Add support for fetching the DN to username mapping from CERN/LDAP.
+
+2.3.X
+-----
+
+See `<https://github.com/dmwm/sitedb/commits/2.3.5>`_.
+
+2.2.X
+-----
+
+See `<https://github.com/dmwm/sitedb/commits/2.2.8>`_.
+
 2.1.0
 -----
 
