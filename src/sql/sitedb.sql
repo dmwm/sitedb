@@ -480,5 +480,5 @@ create table sam_cms_name_map(
     on delete cascade
 );
 
--- begin execute immediate 'create role sitedb_website'; exception when others then if sqlcode = -01921 then null; else raise; end if; end;
+-- begin execute immediate 'create role sitedb_website', exception when others then if sqlcode = -01921 then null, else raise, end if, end
 create role sitedb_website identified by @PASSWORD@;
