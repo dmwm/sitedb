@@ -26,13 +26,18 @@ def run_client(action):
 
 user = "cms_sitedb"
 service = "devdb11"
-#action = "load-schema"
-#action = "delete-all"
-action = "show-schema"
+actions = ['show-schema', 'save-schema', 'restore-schema', 'delete-all', 'delete-current', 'delete-archive', 'load-schema']
+if len(sys.argv) == 2:
+   if sys.argv[1] in actions:
+      action = sys.argv[1]
+      init_server_auth(user, service)
+      setup_server()
 
-init_server_auth(user, service)
-setup_server()
-
-webtest.WebCase.PORT = cherrypy.server.socket_port
-cherrypy.engine.start_with_callback(run_client, args=(action,))
-cherrypy.engine.block()
+      webtest.WebCase.PORT = cherrypy.server.socket_port
+      cherrypy.engine.start_with_callback(run_client, args=(action,))
+      cherrypy.engine.block()
+   else:
+      print "Valid actions:", str(actions)
+      print "Your actions:", str(sys.argv[1])
+else:
+   print "Wrong parameters, valid actions:", str(actions)
