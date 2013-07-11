@@ -51,7 +51,8 @@ var Sites = X.inherit(View, function(Y, gui, rank)
       { method: "PUT", entity: "sites",
         data: { "site_name": title, "tier": tier, "country": country,
                 "usage": usage, "url": url, "logo_url": logo_url,
-                "devel_release": "n", "manual_install": "n" },
+                "devel_release": "n", "manual_install": "n",
+                "executive": executive.username },
         message: "Creating site '" + Y.Escape.html(title) + "'" },
 
       { method: "PUT", entity: "site-names",
@@ -62,13 +63,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
       { method: "PUT", entity: "site-names",
         data: { "site_name": title, "type": "lcg", "alias": lcg },
         message: "Adding site alias " + Y.Escape.html(title) + " = "
-                 + Y.Escape.html(cms) + "/lcg" },
-
-      { method: "PUT", entity: "site-responsibilities",
-        data: { "site_name": title, "role": "Site Executive",
-                "username": executive.username },
-        message: "Adding site executive '"
-                 + Y.Escape.html(executive.fullname) + "'" }
+                 + Y.Escape.html(cms) + "/lcg" }
     ]);
   };
 
@@ -372,7 +367,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     view.render();
   };
 
-  /** Page for global admins to create a new site. */
+  /** Page for global admins and operators to create a new site. */
   this.create = function(req)
   {
     var view;
@@ -381,12 +376,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     _self.title(state, "Create", "Sites");
     _self.loading(state);
 
-    if (! state.isGlobalAdmin())
-    {
-      view = _views.attach("authfail", _self.doc)
-      view.content("what", "create sites");
-    }
-    else
+    if (state.isGlobalAdmin() || state.isSitedbOperator())
     {
       view = _views.attach("create", _self.doc)
       view.validator("title", X.rxvalidate(gui.rx.SITE, true));
@@ -418,6 +408,11 @@ var Sites = X.inherit(View, function(Y, gui, rank)
       });
 
       view.focus("tier");
+    }
+    else
+    {
+      view = _views.attach("authfail", _self.doc)
+      view.content("what", "create sites");
     }
 
     view.render();
@@ -474,7 +469,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
   };
 
   /** Manage site name aliases. For unprivileged users just show the
-      different name aliases. For global admins and site executives
+      different name aliases. For global admins and operators
       allow adding and removing aliases. */
   this.names = function(req)
   {
@@ -485,8 +480,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
     _self.loading(state);
     _state = state;
 
-    var isadmin = (state.isGlobalAdmin()
-                   || state.hasSiteRole("Site Executive", site));
+    var isadmin = state.isGlobalAdmin() || state.isSitedbOperator();
     var obj, content, view;
     if (site in state.sitesByCMS)
       obj = state.sitesByCMS[site];
@@ -543,8 +537,8 @@ var Sites = X.inherit(View, function(Y, gui, rank)
   };
 
   /** Manage site resources. For unprivileged users just show the
-      different hosts. For global admins and site executives allow
-      adding and removing hosts. */
+      different hosts. For global admin, operators and site
+      admins allow adding and removing hosts. */
   this.resources = function(req)
   {
     var site = req.params.site ? unescape(req.params.site) : undefined;
@@ -556,7 +550,8 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
     var isadmin = (state.isGlobalAdmin()
                    || state.hasSiteRole("Site Executive", site)
-                   || state.hasSiteRole("Site Admin", site));
+                   || state.hasSiteRole("Site Admin", site)
+                   || state.isSitedbOperator());
     var obj, content, view;
     if (site in state.sitesByCMS)
       obj = state.sitesByCMS[site];

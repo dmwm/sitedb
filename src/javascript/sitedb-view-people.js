@@ -349,7 +349,7 @@ var People = X.inherit(View, function(Y, gui, rank)
                    + (! p.im_handle ? "" : " | IM: " + Y.Escape.html(p.im_handle)));
 
       var content = "";
-      if (state.whoami.person == p || state.isGlobalAdmin() || state.isSitedbOperator())
+      if (state.whoami.person == p || state.isGlobalAdmin())
         content += _self.personLink(instance, p, "Edit...", "/edit");
       if (state.isGlobalAdmin())
         content += " | " + _self.personLink(instance, p, "Delete", "/remove");
@@ -480,8 +480,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     if (! state.whoami
         || ! state.whoami.person
         || (p && p == state.whoami.person)
-        || (p && state.isGlobalAdmin())
-        || (p && state.isSitedbOperator()))
+        || (p && state.isGlobalAdmin()))
       _edit(false, state, (p ? p.fullname : person), p);
     else if (p && state.whoami)
     {

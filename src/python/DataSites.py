@@ -42,12 +42,17 @@ class Sites(RESTEntity):
       validate_strlist('manual_install', param, safe, RX_YES_NO)
       validate_lengths(safe, 'site_name', 'tier', 'country', 'usage',
                        'url', 'logo_url', 'devel_release', 'manual_install')
+      if method == 'PUT':
+        validate_strlist('executive', param, safe, RX_USER)
+        validate_lengths(safe, 'executive')
 
     elif method == 'DELETE':
       validate_strlist('site_name', param, safe, RX_SITE)
 
     # Delay POST authz until we have database connection for name remapping.
-    if method in ('PUT', 'DELETE'):
+    if method in ('PUT'):
+      authz_match(role=["Global Admin", "Operator"], group=["global","SiteDB"])
+    elif method in ('DELETE'):
       authz_match(role=["Global Admin"], group=["global"])
 
   def _authz(self, sites):
@@ -55,8 +60,8 @@ class Sites(RESTEntity):
     remap = {}
     for site in sites:
       oldsite_authz_match(self.api, remap,
-                          role=["Global Admin", "Site Executive"],
-                          group=["global"], site=[site])
+                          role=["Global Admin", "Operator", "Site Executive", "Site Admin"],
+                          group=["global","SiteDB"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -79,10 +84,10 @@ class Sites(RESTEntity):
   def post(self, site_name, tier, country, usage, url, logo_url,
            devel_release, manual_install):
     """Update the information for sites identified by `site_name`. A site
-    executive can update their own site's record, global admins the info
-    for all the sites. When more than one argument is given, there must be
-    equal number of arguments for all the parameters.  It is an error to
-    attempt to update a non-existent `site`.
+    executive/admin can update their own site's record, operators and global
+    admins the info for all the sites. When more than one argument is given,
+    there must be equal number of arguments for all the parameters.  It is
+    an error to attempt to update a non-existent `site`.
 
     :arg list site_name: site names to insert;
     :arg list tier: new values;
@@ -111,8 +116,9 @@ class Sites(RESTEntity):
 
   @restcall
   def put(self, site_name, tier, country, usage, url, logo_url,
-          devel_release, manual_install):
-    """Insert new sites. The caller needs to have global admin privileges.
+          devel_release, manual_install, executive):
+    """Insert new sites. The caller needs to have global admin privileges
+    or be an operator.
     When more than one argument is given, there must equal number of
     arguments for all the parameters. For input validation requirements,
     see the field descriptions above.  It is an error to attempt to insert
@@ -126,9 +132,11 @@ class Sites(RESTEntity):
     :arg list logo_url: new values;
     :arg list devel_release: new values;
     :arg list manual_install: new values;
+    :arg list executive: username of site executives;
     :returns: a list with a dict in which *modified* gives number of objects
               inserted into the database, which is always *len(site_name).*"""
-    return self.api.modify("""
+
+    r = self.api.modify("""
       insert into site
       (id, name, tier, country, usage, url, logourl, getdevlrelease, manualinstall)
       values (site_sq.nextval, :site_name, (select id from tier where name = :tier),
@@ -136,6 +144,14 @@ class Sites(RESTEntity):
       """, site_name = site_name, tier = tier, country = country,
       usage = usage, url = url, logo_url = logo_url,
       devel_release = devel_release, manual_install = manual_install)
+
+    self.api.modify("""
+      insert into site_responsibility (contact, role, site)
+      values ((select id from contact where username = :username),
+              (select id from role where title = 'Site Executive'),
+              (select id from site where name = :site_name))
+      """, username = executive, site_name = site_name)
+    return r
 
   @restcall
   def delete(self, site_name):
@@ -174,15 +190,7 @@ class SiteNames(RESTEntity):
       validate_strlist('site_name', param, safe, RX_SITE)
       validate_strlist('alias', param, safe, RX_NAME)
       validate_lengths(safe, 'type', 'site_name', 'alias')
-      # Delay authz until we have database connection for name remapping.
-
-  def _authz(self, sites):
-    """Run late authorisation, remapping site names to canonical ones."""
-    remap = {}
-    for site in sites:
-      oldsite_authz_match(self.api, remap,
-                          role=["Global Admin", "Site Executive"],
-                          group=["global"], site=[site])
+      authz_match(role=["Global Admin", "Operator"], group=["global","SiteDB"])
 
   @restcall
   @tools.expires(secs=300)
@@ -213,8 +221,8 @@ class SiteNames(RESTEntity):
 
   @restcall
   def put(self, type, site_name, alias):
-    """Insert new site names. Site executive can update their own site, global
-    admin can update names for all the sites. When more than one argument is
+    """Insert new site names. Only global admins and SiteDB operators can
+    update names for the sites. When more than one argument is
     given, there must be an equal number of arguments for all the parameters.
     For input validation requirements, see the field descriptions above.
     It is an error to attempt to insert an existing name alias triplet.
@@ -224,8 +232,6 @@ class SiteNames(RESTEntity):
     :arg list alias: new values;
     :returns: a list with a dict in which *modified* gives the number of objects
               inserted into the database, which is always *len(type).*"""
-
-    self._authz(site_name)
 
     binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
@@ -274,8 +280,8 @@ class SiteNames(RESTEntity):
 
   @restcall
   def delete(self, type, site_name, alias):
-    """Delete site name associations. Site executive can update their own site,
-    global admin can update names for all the sites. When more than one
+    """Delete site name associations. Only Global admins and SiteDB operators,
+    can delete names for the sites. When more than one
     argument is given, there must be an equal number of arguments for all
     the parameters. For input validation requirements, see the field
     descriptions above. It is an error to attempt to delete a non-existent
@@ -286,8 +292,6 @@ class SiteNames(RESTEntity):
     :arg list alias: values to delete;
     :returns: a list with a dict in which *modified* gives the number of objects
               deleted from the database, which is always *len(type).*"""
-
-    self._authz(site_name)
 
     binds = self.api.bindmap(type = type, site_name = site_name, alias = alias)
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
@@ -366,8 +370,8 @@ class SiteResources(RESTEntity):
     remap = {}
     for site in sites:
       oldsite_authz_match(self.api, remap,
-                          role=["Global Admin", "Site Executive", "Site Admin"],
-                          group=["global"], site=[site])
+                          role=["Global Admin", "Site Executive", "Site Admin", "Operator"],
+                          group=["global", "SiteDB"], site=[site])
 
   @restcall
   @tools.expires(secs=300)
@@ -386,7 +390,7 @@ class SiteResources(RESTEntity):
   @restcall
   def put(self, site_name, type, fqdn, is_primary):
     """Insert new site resources. Site executive / admin can update their own
-    site, global admin can update resources for all the sites. When more than
+    site, global admin / operator can update resources for all the sites. When more than
     one argument is given, there must be an equal number of arguments for all
     the parameters. For input validation requirements, see the field
     descriptions above. It is an error to attemp to insert an existing site
@@ -426,11 +430,11 @@ class SiteResources(RESTEntity):
   @restcall
   def delete(self, site_name, type, fqdn, is_primary):
     """Delete site resource associations. Site executive / admin can update
-    their own site, global admin can update resources for all the sites. When
-    more than one argument is given, there must be an equal number of arguments
-    for all the parameters. For input validation requirements, see the field
-    descriptions above. It is an error to attempt to delete a non-existent
-    site resource.
+    their own site, global admin / operator can update resources for all the
+    sites. When more than one argument is given, there must be an equal number
+    of arguments for all the parameters. For input validation requirements,
+    see the field descriptions above. It is an error to attempt to delete
+    a non-existent site resource.
 
     :arg list site_name: values to delete;
     :arg list type: values to delete;

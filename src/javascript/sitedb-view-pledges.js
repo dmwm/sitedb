@@ -290,9 +290,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     _self.title(state, site, "Pledges");
     _self.loading(state);
 
-    var isadmin = (state.isGlobalAdmin()
-                   || state.hasSiteRole("Site Executive", site)
-                   || state.hasSiteRole("Site Admin", site));
+    var isadmin = (state.isGlobalAdmin() || state.hasSiteRole("Site Executive", site));
     var qmatch = vquarter && vquarter.match(/^(20(?:0[789]|1[0-9]|20))q([1234])$/);
     if (! qmatch)
     {

@@ -367,10 +367,10 @@ var SiteDB = function(Y, views, debug)
       content = "<h3>Administration</h3>"
                 + "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
                 + X.encodeAsPath(instance) + "/people/new'>"
-                + "Create person</a></p>";
+                + "Create service</a></p>";
 
-      // If this is a global admin, add link to site creation too.
-      if (_state.isGlobalAdmin())
+      // If this is an operator or global admin, add link to site creation too.
+      if (_state.isSitedbOperator() || _state.isGlobalAdmin())
         content += "<p><a class='internal' href='" + REST_SERVER_ROOT + "/"
                    + X.encodeAsPath(instance) + "/sites/new'>"
                    + "Create site</a></p>";

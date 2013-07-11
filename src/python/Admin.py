@@ -140,6 +140,9 @@ class AdminClient(helper.CPWebCase):
 	      {"position": 3, "name": "Tier 3"})
     self._put("roles", {"title": "Global Admin"})
     self._put("groups", {"name": "global"})
+    self._put("roles", {"title": "Operator"})
+    self._put("groups", {"name": "SiteDB"})
+    self._put("roles", {"title": "Site Executive"})
     self._put("accounts",
 	      {"username": "diego",    "passwd": "NeedsToBeUpdated"},
 	      {"username": "pkreuzer", "passwd": "NeedsToBeUpdated"})

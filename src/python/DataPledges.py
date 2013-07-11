@@ -59,7 +59,7 @@ class Pledges(RESTEntity):
     remap = {}
     for site in sites:
       oldsite_authz_match(self.api, remap,
-                          role=["Global Admin", "Site Executive", "Site Admin"],
+                          role=["Global Admin", "Site Executive"],
                           group=["global"], site=[site])
 
   @restcall
