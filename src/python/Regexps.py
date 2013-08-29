@@ -11,6 +11,12 @@ import re
 #: Regular expression for CMSSW architecture.
 RX_ARCH      = re.compile(r"^[a-z0-9]+(_[a-z0-9]+){2}$")
 
+#: Regular expression for Federation name.
+RX_FEDERATION = re.compile(r"^[-A-Za-z0-9.,/ _]+$")
+
+#: Regular expression for Group Role description
+RX_DESCRIPTION = RX_FEDERATION
+
 #: Regular expression for CMSSW releases.
 RX_RELEASE   = re.compile(r"^CMSSW(_[A-Za-z0-9_]+){3,}$")
 
@@ -20,6 +26,11 @@ RX_LABEL     = re.compile(r"^[-A-Za-z0-9 _]+$")
 #: Regular expression for quarters: YYYY.Q.
 RX_QUARTER   = re.compile(r"^20(?:0[789]|1[0-9]|20)\.[1234]$")
 
+#: Regular expression for years:
+RX_YEARS     = re.compile(r"^20(?:0[789]|1[0-9]|20)$")
+
+#: Regular expression for pledges number
+RX_NUMBER    = re.compile(r"^([0-9]{1,10})([.,][0-9]{1,})?$")
 #: Regular expression for site names.
 RX_SITE      = RX_LABEL
 

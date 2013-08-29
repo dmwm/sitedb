@@ -73,6 +73,9 @@ input[type=text], input[type=password] {
   width:		15em;
   padding:		.2em;
 }
+.description-area{
+  width: 41em;
+}
 
 input.invalid-value {
   background-color:	rgba(255, 221, 221, 0.8);
@@ -201,7 +204,7 @@ input.invalid-value {
   border:		none;
 }
 
-#resources thead {
+#resources thead, #fed-resources thead {
   background-color:	#d2e0ec;
 }
 
@@ -209,21 +212,25 @@ input.invalid-value {
   background-color:	#cbd8e3;
 }
 
-#resources td, #resources th {
+#resources td, #resources th, #fed-resources td, #fed-resources th {
   padding:		.25em 1.25em .25em 1.25em;
   border-right:		1px solid #ccc;
   text-align:		right;
 }
 
-#resources td:first-child, #resources th:first-child {
+#resources td:first-child, #resources th:first-child,
+#fed-resources td:first-child, #fed-resources th:first-child {
   padding-left:		0.1em;
+  border-left: 1px solid #CCCCCC;
 }
 
-#resources .left {
+#resources .left,
+#fed-resources .left {
   text-align:		left;
 }
 
-#resources .middle {
+#resources .middle,
+#fed-resources .middle   {
   text-align:		center;
 }
 

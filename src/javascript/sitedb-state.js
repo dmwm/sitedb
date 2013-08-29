@@ -16,8 +16,9 @@ var State = function(Y, gui, instance)
   var _ITEMS = [
     "whoami", "roles", "groups", "people", "sites", "site-names",
     "site-resources", "site-associations", "resource-pledges",
-    "pinned-software", "site-responsibilities", "group-responsibilities"
-  ];
+    "pinned-software", "site-responsibilities", "group-responsibilities",
+    "federations", "federations-sites",
+    "federations-pledges", "esp-credit"];
 
   /** Pending XHR requests. */
   var _pending = {};
@@ -55,6 +56,27 @@ var State = function(Y, gui, instance)
   /** Current groups by group name. */
   this.groupsByName = {};
 
+  /** Current federations by id. */
+  this.federationsById = {};
+  this.federationsBYID = {};
+  /** Current federations sites */
+  this.federationsSites = {};
+
+  /** Current federations sites by id */
+  this.federationsSitesById = {};
+
+  /** Current sites by federation */
+  this.federationsByAlias = {};
+
+  /** Current available federation names in wlcg */
+  this.federationsNames = {};
+
+  /** Current Federation pledges */
+  this.federationsPledges = {};
+
+  /** Current ESP Credits */
+  this.espcredit = {};
+
   /** Return server data URL for resource @a name. */
   var _url = function(name)
   {
@@ -80,6 +102,10 @@ var State = function(Y, gui, instance)
   {
     return d3.ascending(a.canonical_name, b.canonical_name);
   };
+  this.sortFederations = function(a, b)
+  {
+    return d3.ascending(a.id, b.id);
+  };
 
   /** Rebuild high-level data from the raw information. */
   var _rebuild = function()
@@ -88,7 +114,61 @@ var State = function(Y, gui, instance)
     var people = [], byacc = {};
     var roles = {}, groups = {};
     var tiers = {}, byname = {}, bycms = {};
+    var federations = [], federationsbysites = [];
+    var fedSitesByID = {};var federations1 = {};
+    var federationsnames = [];
+    var federationsbysitealias = {};
+    var federationspledges = [];
+    var espcredits={};
 
+    // ESP Credits
+       Y.each(_data['esp-credit'].value || [], function(i) {
+     var ss = { esp_values: {}};
+     if (! (i.site in espcredits))
+     espcredits[i.site] = Y.merge(ss);
+     var credit = espcredits[i.site].esp_values;
+     if (! (i.year in credit))
+       {credit[i.year] = {};
+        credit[i.year] = {esp_credit: i.esp_credit};
+        }
+    });
+    // Federations.
+    Y.each(_data['federations'].value || [], function(i) {
+    var s = i.name.toLowerCase().replace(/[^a-z0-9]+/gi, "-");
+    var canon = {canonical_name : s};
+    var r = Y.merge(canon, i);
+    federations.push(r);
+    federationsnames.push(i);
+    var ii = federations1[i.id] = i;
+    });
+    // Federations Sites.
+    Y.each(_data['federations-sites'].value || [], function(i) {
+     federationsbysites.push(i);
+     if(i.fed_id in Object.keys(federations1)){
+     federationsbysitealias[i.alias] = Y.merge({feder_name: federations1[i.fed_id].name} ,i);
+     }
+     else federationsbysitealias[i.alias] = Y.merge({feder_name: ''} ,i);
+     var r = fedSitesByID[i.site_id] = Y.merge(i);
+     });
+    // Federations Pledges.
+    Y.each(_data['federations-pledges'].value || [], function(i) {
+     var ss = {country: i.country, pledges: {}, history_pledges: {}};
+     if (! (i.name in federationspledges))
+     var s = federationspledges[i.name] = Y.merge(ss);
+     var pled = federationspledges[i.name].pledges;
+     var pled_his = federationspledges[i.name].history_pledges;
+     if (! (i.year in pled))
+       {pled[i.year] = {};
+        pled[i.year] = {cpu: i.cpu, disk : i.disk, tape: i.tape, timestamp: i.feddate};
+        }
+     else{
+	  if(pled[i.year]['timestamp'] < i.feddate)
+             pled[i.year] = {cpu: i.cpu, disk : i.disk, tape: i.tape, timestamp: i.feddate};
+         }
+     if (! (i.year in pled_his))
+        pled_his[i.year] = [];
+     pled_his[i.year].push({cpu: i.cpu, disk: i.disk, tape: i.tape, timestamp: i.feddate});
+    });
     // Roles and groups.
     Y.each(_data['roles'].value || [], function(i) {
       var r = roles[i.title] = Y.merge({ members: [], site: {}, group: {} }, i);
@@ -122,10 +202,10 @@ var State = function(Y, gui, instance)
       var site = { cc: null, canonical_name: i.site_name, name_alias: {},
                    resources: { CE: [], SE: [] },
                    child_sites: [], parent_site: null,
-                   resource_pledges: {}, pinned_software: {},
-                   responsibilities: {} };
+                   resource_pledges: {}, pinned_software: {}, history_resource_pledges: {},
+                   responsibilities: {}
+                   };
       site = Y.merge(site, i);
-
       var tier = tiers[i.tier];
       if (! tier)
         tier = tiers[i.tier] = [];
@@ -177,12 +257,14 @@ var State = function(Y, gui, instance)
       if (i.site_name in byname)
       {
         var pledges = byname[i.site_name].resource_pledges;
-        if (! (i.quarter in pledges)
-            || pledges[i.quarter].pledge_date < i.pledge_date)
-	  pledges[i.quarter] = i;
+        var hist_pledges = byname[i.site_name].history_resource_pledges;
+        if (! (i.quarter in pledges))
+            pledges[i.quarter] = i;
+        if (! (i.quarter in hist_pledges))
+          hist_pledges[i.quarter] = [];
+        hist_pledges[i.quarter].push(i);
       }
     });
-
     // Pinned software.
     Y.each(_data['pinned-software'].value || [], function(i) {
       if (i.site_name in byname)
@@ -291,6 +373,8 @@ var State = function(Y, gui, instance)
       });
     });
 
+//   federations.sort(_self.sortFederations);
+
     _self.sitesByTier = tiers;
     _self.sitesByName = byname;
     _self.sitesByCMS = bycms;
@@ -299,6 +383,15 @@ var State = function(Y, gui, instance)
     _self.rolesByTitle = roles;
     _self.groupsByName = groups;
     _self.whoami = whoami;
+    _self.espcredit = espcredits;
+    _self.federationsById = federations;
+    _self.federationsBYID = federations1;
+    _self.federationsSites= federationsbysites;
+    _self.federationsSitesById = fedSitesByID;
+    _self.federationsNames = federationsnames;
+    _self.federationsPledges = federationspledges;
+    _self.federationsByAlias = federationsbysitealias;
+
   };
 
   /** Final handler for state update. Rebuilds high-level data and calls

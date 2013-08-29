@@ -72,7 +72,7 @@ class Sites(RESTEntity):
     :returns: sequence of rows of sites; field order in the returned
               *desc.columns*."""
     return self.api.query(match, itemgetter(0), """
-      select s.name site_name, t.pos tier_level, t.name tier,
+      select s.id, s.name site_name, t.pos tier_level, t.name tier,
              to_nchar(s.country) country,
              s.usage, s.url, s.logourl logo_url,
              s.getdevlrelease devel_release, s.manualinstall manual_install

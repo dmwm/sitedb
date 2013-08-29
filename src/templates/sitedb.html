@@ -284,62 +284,46 @@
   ><script type="text/x-template" id="t-view-pledges-main"
    ><h2 x-element='title'></h2
    ><table style='padding:0 0 1em'
-     ><tr><td>By quarter:</td><td x-element='by-quarter'></td></tr
+     ><tr><td>By year:</td><td x-element='by-quarter'></td></tr
      ><tr><td>By country:</td><td x-element='by-country'></td></tr
      ><tr><td>By Tier-1:</td><td x-element='by-tier1'></td></tr
    ></table
    ><table x-element='pledges' id='resources' style='margin:1em 0'></table
-  ></script
+  ><button x-element='update-esp-credits'
+          type='button'>Update ESP Credits</button></script
   ><script type="text/x-template" id="t-view-pledges-quarter"
    ><h2 x-element='title'></h2
    ><table id='resources' style='margin:1em 0'
      ><thead
       ><tr
-       ><th class='left' rowspan='2'>Quarter</th
-       ><th rowspan='2' title='Total processing power available to CMS'
-         >CPU<br />[kSI2k]</th
-       ><th rowspan='2' title='Total processing power available to CMS'
-         >Jobs<br />[slots]</th
-       ><th colspan='4' class='middle' title='Total storage allocated to CMS'
+       ><th rowspan='2' title='Years'
+        >Year</th
+         ><th rowspan='2' title='Total processing power available to CMS'
+         >CPU<br />[KHS06]</th
+       ><th colspan='3' class='middle' title='Total storage allocated to CMS'
          >Storage [TB]</th
-       ><th colspan='2' class='middle' title='Expected national and international bandwidth'
-         >Network [Gbps]</th
-       ><th rowspan='2' title='Time the pledge was last updated'
-         >Updated</th
-      ></tr><tr
+       ></tr><tr
        ><th>Tape</th
        ><th>Disk</th
-       ><th title='Storage available for transfer (PhEDEx)'>WAN</th
-       ><th title='Storage available for local users'>Local</th
-       ><th title='National connection speed'>NREN</th
-       ><th title='OPN international connection speed'>OPN</th
-      ></tr
+       ><th>Local</th></tr
      ></thead
      ><tbody x-element='edit'
       ><tr
        ><td><select x-element='quarter'></select></td
        ><td><input x-element='cpu' type='text'
          style='text-align:right;width:3.5em' /></td
-       ><td><input x-element='jobs' type='text'
-         style='text-align:right;width:3.5em' /></td
        ><td><input x-element='tape' type='text'
          style='text-align:right;width:3.5em' /></td
        ><td><input x-element='disk' type='text'
          style='text-align:right;width:3.5em' /></td
-       ><td><input x-element='wan' type='text'
-         style='text-align:right;width:3.5em' /></td
        ><td><input x-element='local' type='text'
-         style='text-align:right;width:3.5em' /></td
-       ><td><input x-element='nren' type='text'
-         style='text-align:right;width:3.5em' /></td
-       ><td><input x-element='opn' type='text'
          style='text-align:right;width:3.5em' /></td
        ><td><button x-element='add' type='button'
          >Pledge</button></td
       ></tr
      ></tbody
      ><tbody x-element='table'></tbody
-   ></table
+   > <thead><tr><th rowspan='2' colspan='5' class='middle'>Federation Pledges</th></tr><tr></tr><tbody x-element='fed-table'></tbody></table
   ></script
   ><script type="text/x-template" id="t-view-admin-main"
    ><div class='group'><h2>Roles</h2><table
@@ -368,7 +352,17 @@
        /></td><td></td><td></td
      ></tr></tbody
    ></table></div
-  ></script
+  ><div class='group'><h2>Federations</h2><table
+     ><thead><tr
+       ><th style='text-align:left'>Country</th
+       ><th style='text-align:left'>Name</th
+       ><th style='text-align:right'>Sites</th
+       ><th></th
+     ></tr></thead
+     ><tbody x-element='federations'></tbody
+   ></table></div
+  >
+</script
   ><script type="text/x-template" id="t-view-admin-site"
    ><div style='width:95%;margin:0 0 1em'
      ><h2 x-element='title'></h2
@@ -397,11 +391,14 @@
        ></tr></tbody
        ><tbody x-element='members'></tbody
      ></table
-   ></div
+  ></div
   ></script
   ><script type="text/x-template" id="t-view-admin-role"
    ><div style='width:95%;margin:0 0 1em'
      ><h2 x-element='title'></h2
+     ><div style='width:50%'><span x-element='role-description'></span>
+      <input class='description-area' x-element='r-description'
+            placeholder='Add description' rows='7' /></div
      ><table
        ><thead><tr><th style='text-align:left'>Group</th
          ><th style='text-align:left'>Member</th
@@ -419,6 +416,21 @@
             placeholder='Name to add' style='width:25em' /></td
        ></tr></tbody
        ><tbody x-element='site-members'></tbody
+     ></table
+   ></div
+   ></script
+   > <script type="text/x-template" id="t-view-admin-federation"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+        ><thead><tr><th style='text-align:left'>Name</th
+         ><th style='text-align:left'>Sites</th
+        ></tr></thead
+       ><tbody><tr><td><span x-element='federations-select'></span></td
+         ><td><input x-element='group-federation' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='federations'></tbody
      ></table
    ></div
   ></script

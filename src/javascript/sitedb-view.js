@@ -54,10 +54,8 @@ ViewContent = function(Y, id)
   /** The current instantiation of the template, including any accumulated
       content() changes made so far. */
   var _buffer = Y.Node.create("<div />");
-
   /** The template string. */
   var _template = Y.one("#t-" + id).getContent();
-
   /** Known view elements. Captured at template instantiation time as any
       node with x-element attribute. */
   var _elements = [];
@@ -687,6 +685,15 @@ var View = function(Y, gui, rank, label, required)
            + X.encodeAsPath(instance) + "/admin/site/"
            + X.encodeAsPath(site.canonical_name)
            + (tail || "") + "'>" + Y.Escape.html(title || site.canonical_name) + "</a>";
+  };
+
+  /** Generate link to federation. */
+  this.federationLink = function(instance, federation, title, tail)
+  {
+    return "<a class='internal' href='" + REST_SERVER_ROOT + "/"
+           + X.encodeAsPath(instance) + "/admin/federation/"
+           + X.encodeAsPath(federation.canonical_name)
+           + (tail || "") + "'>" + Y.Escape.html(title || federation.name) + "</a>";
   };
 
   /** Generate 'mailto' link for an e-mail address. */
