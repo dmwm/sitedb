@@ -19,10 +19,6 @@ Contents             Meaning                   Value                            
     if method in ('GET', 'HEAD'):
       validate_rx('match', param, safe, optional = True)
 
-    elif method in ('DELETE'):
-      validate_strlist('name', param, safe, RX_FEDERATION)
-      authz_match(role=["Global Admin"], group=["global"])
-
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
@@ -37,17 +33,3 @@ Contents             Meaning                   Value                            
              left outer join sites_federations_names_map sfnm
                   on sfnm.federations_names_id = fn.id
               group by fn.id, fn.name, fn.country order by country, name, site_count""");
-
-  @restcall
-  def delete(self, name):
-    """Delete federation. The caller needs to have global admin privileges.
-       For input validation requirements, see the field descriptions above.
-       It is an error to attempt to delete a non-existent federation.
-
-       :arg list title: names to delete.
-
-       :returns: nothing*"""
-    self.api.modify("delete from all_federations_names where name = :name", name = name)
-
-    elf.api.modify("""delete from sites_federations_names_map where all_federations_names_id =
-                       (select id from all_federations_names where name = :name)""", name = name)

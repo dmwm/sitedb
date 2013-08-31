@@ -243,27 +243,6 @@ var Admin = X.inherit(View, function(Y, gui, rank)
              });
   };
 
-  /** Action handler for removing federations. */
-  var _removeFederation = function(e)
-  {
-    var x = X.findEventAncestor(e, "x-federation");
-    if (! x) return;
-    var obj = _state.federationsBYID[x.value];
-    if (! obj) return;
-
-    X.confirm(Y, "Delete federation '" + Y.Escape.html(obj.name) + "' with "
-              + " sites"
-              + "?",
-              "Delete", function() {
-                _state.modify([{
-                  method: "DELETE", entity: "federations",
-                  data: { "name": obj.name },
-                  invalidate: [ "federations" ],
-                  message: "Deleting federation '" + obj.name + "'"
-                }]);
-              });
-  };
-
   /** Action handler for creating federation site. */
   var _addFederationSite = function(federation, user_input, none, site)
   {
@@ -315,7 +294,6 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     _rmitem = _self.doc.delegate("click", _removeRoleMember, ".rmitem");
     _rmrole = _self.doc.delegate("click", _removeRole, ".rmrole");
     _rmgroup = _self.doc.delegate("click", _removeGroup, ".rmgroup");
-    _rmfederation = _self.doc.delegate("click", _removeFederation, ".rmfederation");
     _rmfederationsite = _self.doc.delegate("click", _removeFederationSite, ".rmfederationsite");
   };
 
@@ -326,7 +304,6 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     _rmitem.detach();
     _rmrole.detach();
     _rmgroup.detach();
-    _rmfederation.detach();
     _rmfederationsite.detach();
     _state = null;
   };
@@ -352,7 +329,6 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     var view = _views.attach("main", _self.doc);
     view.validator("add-role", X.rxvalidate(gui.rx.LABEL, true));
     view.validator("add-group", X.rxvalidate(gui.rx.LABEL, true));
-    view.validator("add-federation", X.rxvalidate(gui.rx.FEDERATION, true));
     view.on("add-role", "keypress", function(e) {
       if (e.keyCode == 13) _createRole(view.valueOf("add-role"));
     });
@@ -391,10 +367,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                  + "<td style='padding-top:0.1em'>"
                  + _self.federationLink(instance, g)
                  + "</td><td align='right' style='padding-top:0.1em'>"+ g.site_count
-                 + "</td><td>"
-                 + "<span class='rmbutton rmfederation' title='Remove item'"
-                 + " x-federation='" + X.encodeAsPath(g.id) + "'"
-                 + "><span class='rmicon'></span></span></td></tr>";
+                 + "</td></tr>";
     });
     view.content("federations", content);
 
