@@ -19,10 +19,6 @@ Contents             Meaning                   Value                            
     if method in ('GET', 'HEAD'):
       validate_rx('match', param, safe, optional = True)
 
-    elif method in ('PUT'):
-      validate_strlist('name', param, safe, RX_FEDERATION)
-      authz_match(role=["Global Admin"], group=["global"])
-
   @restcall
   @tools.expires(secs=300)
   def get(self, match):
@@ -38,18 +34,3 @@ Contents             Meaning                   Value                            
                                                           from federations_pledges fp
                                                           join all_federations_names afn on afn.id = fp.federations_names_id
                                                           order by afn.country, afn.name, fp.feddate ASC""");
-
-  @restcall
-  def put(self, name):
-    """Insert new federations name from REBUS. The caller needs to have global admin privileges.
-       For input validation requirements, see the field descriptions above.
-       It is an error to attempt to insert a federation name from REBUS which already exists.
-
-       :arg list title: names to insert.
-
-       :returns: a list with a dict in which *modified* gives number of objects
-                 inserted into the database, which is always *len(name).*"""
-    return self.api.modify("""
-      insert into federations_names (name, id)
-      values (:name, federations_names_sq.nextval)
-      """, name = name)
