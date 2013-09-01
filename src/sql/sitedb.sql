@@ -43,7 +43,7 @@ create table resource_pledge (
   pledgeid              number(10) not null,
   site			number(10) not null,
   pledgedate		timestamp not null,
-  pledgequarter		float,
+  pledgequarter		number(4),
   cpu			float,
   job_slots		float,
   disk_store		float,
@@ -229,6 +229,7 @@ create index ix_contact_forename on contact (forename);
 create table role (
   id			number(10) not null,
   title			varchar(100) not null,
+  description           varchar(4000), 
   --
   constraint pk_role primary key (id),
   constraint uk_role_title unique (title)
@@ -479,6 +480,53 @@ create table sam_cms_name_map(
     foreign key (sam_id) references sam_name (id)
     on delete cascade
 );
+
+---- 
+--  Tables for Federations Pledges
+----
+
+create table sites_federations_names_map(
+  id 				number(10) not null,
+  site_id 			number(10) not null,
+  federations_names_id		number(10) not null,
+  constraint pk_sites_federations_names_map primary key (id),
+  constraint uq_sites_fed_names_map unique (site_id)
+);
+create sequence sites_federations_names_map_sq by 1 start with 1;
+
+create table federations_pledges(
+  id 				number(10) not null,
+  federations_names_id		number(10) not null,
+  year				number(10) not null,
+  cpu				float,
+  disk				float,
+  tape				float,
+  feddate			timestamp not null,
+  constraint pk_federations_pledges primary key(id)
+);
+create sequence federations_pledges_sq by 1 start with 1;
+
+create table all_federations_names(
+  id 				number(10) not null,
+  name				varchar(10) not null,
+  country			varchar(10) not null,
+  constraint pk_all_federations_names primary key(id),
+  constraint uq_all_fed_names unique (name)
+);
+create sequence all_federations_names_sq by 1 start with 1;
+
+----
+--  Tables for ESP credits
+----
+
+create table sites_esp_credits(
+  id				number(10) not null,
+  site				number(10) not null,
+  year				number(4) not null,
+  esp_credit			float not null,
+  constraint pk_sites_esp_credits primary key (id)
+);
+create sequence sites_esp_credits_sq by 1 start with 1;
 
 -- begin execute immediate 'create role sitedb_website', exception when others then if sqlcode = -01921 then null, else raise, end if, end
 create role sitedb_website identified by @PASSWORD@;

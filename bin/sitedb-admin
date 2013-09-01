@@ -24,12 +24,12 @@ def run_client(action):
   finally:
     cherrypy.engine.exit()
 
-user = "cms_sitedb"
-service = "devdb11"
 actions = ['show-schema', 'save-schema', 'restore-schema', 'delete-all', 'delete-current', 'delete-archive', 'load-schema']
-if len(sys.argv) == 2:
+if len(sys.argv) == 4:
    if sys.argv[1] in actions:
       action = sys.argv[1]
+      user = sys.argv[2]
+      service = sys.argv[3]
       init_server_auth(user, service)
       setup_server()
 
@@ -40,4 +40,5 @@ if len(sys.argv) == 2:
       print "Valid actions:", str(actions)
       print "Your actions:", str(sys.argv[1])
 else:
-   print "Wrong parameters, valid actions:", str(actions)
+   print "Wrong parameters, valid actions -> One of: ", str(actions)
+   print "Command example: %LOCATION%/sitedb-admin show-schema user service"
