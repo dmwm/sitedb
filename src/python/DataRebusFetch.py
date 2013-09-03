@@ -44,7 +44,6 @@ class RebusFetch(RESTEntity):
       validate_strlist('disk', param, safe, RX_NUMBER)
       validate_strlist('tape', param, safe, RX_NUMBER)
       validate_lengths(safe, 'name', 'country', 'year', 'cpu', 'disk', 'tape')
-
       authz = cherrypy.request.user
       if authz['method'] != 'Internal' or authz['login'] != self._syncer.sectoken:
         raise cherrypy.HTTPError(403, "You are not allowed to access this resource.")
@@ -85,6 +84,10 @@ class RebusFetch(RESTEntity):
     rebrows = self.api.bindmap(name=name, country=country, year=year, cpu=cpu, disk=disk, tape=tape)
     self._update(self._current(), rebrows)
     self._update_resources()
+
+    # Getting topology from Rebus
+    rebtopology = self._read_sites_topolygy()
+    self._update_sites_assoc(rebtopology, self._current_sites(), self._current_feders())
     return []
 
   def _current(self):
@@ -109,6 +112,49 @@ class RebusFetch(RESTEntity):
         pledges[name] = {"country" : country, "id" : id, "pledges" : {}};
         pledges[name]["pledges"] = {year : {"cpu" : cpu, "disk": disk, "tape" : tape}};
     return pledges
+
+  def _current_sites(self):
+    """Return current site sam.name, id, tier name information from database.
+       It is required for comparing information from REBUS topology.
+       :returns: dictionary of current sites in database"""
+    c, _ = self.api.execute("""select s.id site_id, sam.name alias, t.name tier_name
+                                      from site s
+                                      join site_cms_name_map cmap on cmap.site_id = s.id
+                                      join sam_cms_name_map smap on smap.cms_name_id = cmap.cms_name_id
+                                      join sam_name sam on sam.id = smap.sam_id
+                                      join tier t on t.id = s.tier """)
+    out1 = {}
+    for row in c:
+      site_id, alias, tier_name = row
+      if tier_name in out1.keys():
+        if alias in out1[tier_name].keys():
+          out1[tier_name][alias] = site_id
+          # always 1 , it can`t be more
+        else:
+          out1[tier_name][alias] = site_id
+      else:
+        out1[tier_name]= {alias : site_id}
+    return out1;
+
+  def _current_feders(self):
+    """Returns current federations and sites associations from database.
+       It is required for comparing information from REBUS topology.
+       :returns: dictionary of current federations and associations."""
+    c, _ = self.api.execute("""select afn.name fed_name, afn.id fed_id, sfnm.site_id site_id
+                                      from all_federations_names afn
+                                      left outer join sites_federations_names_map sfnm on sfnm.federations_names_id = afn.id """)
+    out = {}
+    for row in c:
+      fed_name, fed_id, site_id = row
+      if fed_name in out.keys():
+        if site_id not in out[fed_name]["sites"]:
+          out[fed_name]["sites"].append(site_id);
+        else:
+          cherrypy.log("Something goes wrong with database, multiple sites with same id : %" % row)
+      else:
+        out[fed_name] = {"fed_id": fed_id, "sites": []}
+        out[fed_name]["sites"].append(site_id)
+    return out;
 
   def tryToInt(self, value):
     """String to int parser.
@@ -235,7 +281,7 @@ class RebusFetch(RESTEntity):
       cherrypy.request.db["handle"]["connection"].commit()
 
   def _insertnames(self, names_new):
-    """Inserting federation name and country
+    """Inserting federation name and country.
        :returns: nothing """
     for name in names_new:
       try:
@@ -250,6 +296,58 @@ class RebusFetch(RESTEntity):
       trace = cherrypy.request.db["handle"]["trace"]
       trace and cherrypy.log("%s commit" % trace)
       cherrypy.request.db["handle"]["connection"].commit()
+
+  def _read_sites_topolygy(self):
+    """Read REBUS sites topology. Topology url: http://wlcg-rebus.cern.ch/apps/topology/all/json
+       :returns: list of all topology data"""
+    data = []
+    url = "http://wlcg-rebus.cern.ch/apps/topology/all/json"
+    req = urllib2.Request(url)
+    opener = urllib2.build_opener()
+    f = opener.open(req)
+    topology = json.loads(f.read())
+    for index, item in enumerate(topology):
+      federname = item["Federation"]
+      site = item["Site"]
+      tier = item["Tier"];
+      i = {"site" : site, "federation": federname, "tier": tier}
+      data.append(i);
+    return data;
+  
+  def _update_sites_assoc(self, rows_ins, current_sites, current_feds):
+    """Comparing database and REBUS data. Preparing database update rows for site associations."""
+    update = []
+    for row in rows_ins:
+      tier = row["tier"]
+      site = row["site"]
+      federation = row["federation"]
+      if federation in current_feds.keys():
+        fed_id = current_feds[federation]['fed_id']
+        if tier in current_sites.keys():
+          if site in current_sites[tier].keys():
+            site_id = current_sites[tier][site];
+            if site_id not in current_feds[federation]["sites"]:
+              update.append({"site_id": site_id, "federations_names_id": fed_id})
+    self._insert_new_assoc(update)
+ 
+  def _insert_new_assoc(self, new_assoc):
+    """New federation site association insert into database.
+       :returns: nothing"""
+    for new_ins_assoc in new_assoc:
+      try:
+        self.api.execute("""insert into sites_federations_names_map (id, site_id, federations_names_id)
+      values (sites_federations_names_map_sq.nextval, :site_id, :federations_names_id)
+      """, new_ins_assoc)
+
+      except Exception, e:
+        cherrypy.log('Error : %s' %str(e))
+        continue
+    if new_assoc:
+      trace = cherrypy.request.db["handle"]["trace"]
+      trace and cherrypy.log("%s commit" % trace)
+      cherrypy.request.db["handle"]["connection"].commit()
+ 
+              
 
 class RebusFetchThread(Thread):
   """A task thread to synchronise federation pledges from REBUS. This runs on
@@ -392,14 +490,13 @@ class RebusFetchThread(Thread):
       c.setopt(pycurl.HTTPHEADER, ["%s: %s" % h for h in headers])
       c.setopt(pycurl.READFUNCTION, StringIO(body).read)
       c.result = result
+    elif method  == "GET":
+      headers = self._headers[:]
+      c.setopt(pycurl.URL, self._inturl)
+      c.setopt(pycurl.HTTPHEADER, ["%s: %s" % h for h in headers])
+      c.result = result
     else:
-      if method  == "GET":
-        headers = self._headers[:]
-        c.setopt(pycurl.URL, self._inturl)
-        c.setopt(pycurl.HTTPHEADER, ["%s: %s" % h for h in headers])
-        c.result = result
-      else:
-        assert False, "Unsupported method"
+      assert False, "Unsupported method"
 
   def _encode(self, rows):
     """Encode dictionaries in `rows` for POST/PUT body as a HTML form."""
@@ -434,3 +531,4 @@ class RebusFetchThread(Thread):
             data[federname] = {"country" : country, "pledges" : {}};
             data[federname]["pledges"] = {x : {pledgetype : cms}};
     return data;
+
