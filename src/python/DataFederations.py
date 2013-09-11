@@ -32,4 +32,4 @@ Contents             Meaning                   Value                            
       select fn.id id, fn.name name, sum(case when sfnm.site_id is null then 0 else 1 end) site_count, fn.country country from all_federations_names fn
              left outer join sites_federations_names_map sfnm
                   on sfnm.federations_names_id = fn.id
-              group by fn.id, fn.name, fn.country order by country, name, site_count""");
+              group by fn.id, fn.name, fn.country order by LOWER(country), LOWER(name), site_count""");

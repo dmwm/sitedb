@@ -323,8 +323,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
       return d3.ascending(a.canonical_name, b.canonical_name); });
     var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
       return d3.ascending(a.canonical_name, b.canonical_name); });
-    var federations = Y.Object.values(state.federationsById).sort(function(a, b) {
-      return a.country == b.country ? a.name < b.name : a.country < b.country; });
+    var federations = state.federationsById;
 
     var view = _views.attach("main", _self.doc);
     view.validator("add-role", X.rxvalidate(gui.rx.LABEL, true));

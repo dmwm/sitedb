@@ -267,14 +267,15 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
         else
         {
           if ("No Federation" in sitesfed) sitesfed["No Federation"].sites.push(s);
-          else sitesfed["No Federation"] = Y.merge(sitesfed["No Federation"], {sites : [s], fed_name : "No Federation", country : temp_country});
+          else sitesfed["No Federation"] = Y.merge(sitesfed["No Federation"], {sites : [s], fed_name : "No Federation", country : "zzz"});
         }
       }
       else
       {
         if("No Federation" in sitesfed) sitesfed["No Federation"].sites.push(s);
-        else sitesfed["No Federation"] = Y.merge(sitesfed["No Federation"], {sites : [s], fed_name : "No Federation", country : temp_country});
+        else sitesfed["No Federation"] = Y.merge(sitesfed["No Federation"], {sites : [s], fed_name : "No Federation", country : "zzz"});
       }
+    // fake country name to show not assigned sites to federation at the end
     });
       if (sites.length)
       {
@@ -289,7 +290,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
           + head + "</th></tr></thead><tbody>";
 
         sitesfed = Y.Object.values(sitesfed).sort(function(a, b) {
-          return d3.ascending(a.country, b.country); });
+          return d3.ascending(a.country.toLowerCase(), b.country.toLowerCase()); });
        Y.each(sitesfed, function(b){
        var temp_fed_name;
        var temp_id;
