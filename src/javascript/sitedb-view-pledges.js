@@ -459,10 +459,11 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
   {
     var date = new Date(tmp_timestamp * 1000);
     var year = date.getFullYear();
-    var month = date.getMonth();
-    var day = date.getDay();
+    var month = date.getMonth()+1;
+    var day = date.getDate();
     var hour = date.getHours();
     var minute = date.getMinutes();
+    if (minute<10) minute = "0" + minute;
     var date_string = year + "-" + month +"-"+ day +" "+ hour + ":" + minute;
     return date_string;
   }
