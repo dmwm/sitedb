@@ -334,16 +334,12 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
         view.content("pledges-head",
                      _self.pledgeLink(instance, s, "Resource Pledge"));
-        view.content("quarter", (pledge ? quarter : _none));
+        view.content("year", (pledge ? quarter : _none));
         view.content("updated", (pledge ? pledgeTime : _none));
         view.content("cpu", (pledge ? Y.Escape.html(pledge.cpu) : "-"));
-        view.content("jobs", (pledge ? Y.Escape.html(pledge.job_slots) : "-"));
         view.content("disk", (pledge ? Y.Escape.html(pledge.disk_store) : "-"));
         view.content("tape", (pledge ? Y.Escape.html(pledge.tape_store) : "-"));
-        view.content("wan", (pledge ? Y.Escape.html(pledge.wan_store) : "-"));
         view.content("local", (pledge ? Y.Escape.html(pledge.local_store) : "-"));
-        view.content("nren", (pledge ? Y.Escape.html(pledge.national_bandwidth) : "-"));
-        view.content("opn", (pledge ? Y.Escape.html(pledge.opn_bandwidth) : "-"));
 
         content = "";
         view.content("people-head",
