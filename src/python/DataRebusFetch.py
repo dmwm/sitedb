@@ -405,14 +405,6 @@ class RebusFetchThread(Thread):
       now = time.time()
       until = now + self._interval
 
-      with self._cv:
-        while not self._stopme and now < until:
-          self._cv.wait(until - now)
-          now = time.time()
-
-        if self._stopme:
-          return
-
       try:
         self._sync(now)
       except Exception, e:
@@ -421,6 +413,14 @@ class RebusFetchThread(Thread):
                         e.__class__.__name__, str(e)))
         for line in format_exc().rstrip().split("\n"):
           cherrypy.log("  " + line)
+
+      with self._cv:
+        while not self._stopme and now < until:
+          self._cv.wait(until - now)
+          now = time.time()
+
+        if self._stopme:
+          return
 
   def _validate(self, input, type, regexp, now):
     """Convenience method to validate ldap data"""
