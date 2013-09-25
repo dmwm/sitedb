@@ -55,20 +55,20 @@ class RebusFetch(RESTEntity):
                                       fp.year year, fp.cpu cpu, fp.disk disk, fp.tape tape
                                       from all_federations_names fn
                                       left join federations_pledges fp
-                                      on fn.id = fp.all_federations_names_id""")
+                                      on fn.id = fp.federations_names_id""")
     pledges = {};
     for row in c:
       id, name, country, year, cpu, disk, tape = row
       if name in pledges.keys():
         if year in pledges[name]["pledges"].keys():
-          pledges[name]["pledges"][year]["cpu"]= cpu;
+          pledges[name]["pledges"][year]["cpu"]= str(cpu);
           pledges[name]["pledges"][year]["disk"]= disk;
           pledges[name]["pledges"][year]["tape"]= tape;
         else:
-          pledges[name]["pledges"][year] = {"cpu" : cpu, "disk" : disk, "tape" : tape};
+          pledges[name]["pledges"][year] = {"cpu" : str(cpu), "disk" :str(disk), "tape" : str(tape)};
       else:
         pledges[name] = {"country" : country, "id" : id, "pledges" : {}};
-        pledges[name]["pledges"] = {year : {"cpu" : cpu, "disk": disk, "tape" : tape}};
+        pledges[name]["pledges"] = {year : {"cpu" : str(cpu), "disk": str(disk), "tape" : str(tape)}};
     return pledges
 
   @restcall
@@ -88,7 +88,134 @@ class RebusFetch(RESTEntity):
     # Getting topology from Rebus
     rebtopology = self._read_sites_topolygy()
     self._update_sites_assoc(rebtopology, self._current_sites(), self._current_feders())
+    # Execute rebus data to single site pledges
+    self._rebus_site_pledges_assoc(self.get(),self._get_fed_site_tier(),self._get_all_sites_resources())
     return []
+
+  def _rebus_site_pledges_assoc(self,fed_resources, fed_sites, site_resources):
+    """Comparing rebus pledges with single federation site pledges """
+    pledges_update = []      
+    for key, value in site_resources.iteritems():
+      listfunc = []
+      n = re.search(u'(.*)(_Disk)', key)
+      if n is None:
+        fed_name = ''
+        site_id = ''
+        for fedname, value in fed_sites.iteritems():
+          if key in value['sites'].keys():
+            fed_name = fedname
+        if fed_name:
+          if fed_sites[fed_name]['tier'] == 1:
+          #for tier 1 not updating disk value if they have a Disk site
+            if fed_sites[fed_name]['counter'] == 2:
+            # site have disk site also!!!
+              #for loop to check all federation resources;
+              listfunc = self._compare_pledges(fed_name, key,1,fed_resources,site_resources)             
+            else:
+            # site does not have disk site!!!
+              #for loop to check all federation resources;
+              listfunc = self._compare_pledges(fed_name, key,0,fed_resources,site_resources) 
+          else:
+            listfunc = self._compare_pledges(fed_name, key,0,fed_resources,site_resources) 
+      else:
+        cherrypy.log("regex skipped : %s"% n.group())
+      for val in listfunc:
+        pledges_update.append(val)
+    self._update_single_fed_site_resources(pledges_update)  
+
+  def _update_single_fed_site_resources(self, resources):
+    """Query for updating resource pledges from list, where federation have one site.
+       :returns: nothing."""
+    for resource in resources:
+      try:
+        self.api.execute("""insert into resource_pledge
+                                   (pledgeid, site, pledgedate, cpu, job_slots, disk_store, tape_store, pledgequarter)
+                            VALUES (resource_pledge_sq.nextval, :siteid, systimestamp, :cpu, 0, :disk, :tape, :year)
+                         """, resource)
+      except Exception, e:
+        cherrypy.log("WARNING: failed to update pledge %s, year %s: %s"
+                     %(resource['siteid'], resource['year'], str(e)))
+        continue
+    if resources:
+      trace = cherrypy.request.db["handle"]["trace"]
+      trace and cherrypy.log("%s commit" % trace)
+      cherrypy.request.db["handle"]["connection"].commit()
+
+  def _compare_pledges(self, keyfed, keysite, t1disk, fed_resources, site_resources):
+    """Comparing Federation pledges and Site pledges, if year above 2014, then it is not updated."""
+    pledges_update = []
+    for key1 in fed_resources[keyfed]['pledges'].keys():
+      if key1 in site_resources[keysite]['pledges'].keys():
+        cpu_fed = str(fed_resources[keyfed]['pledges'][key1]['cpu'])
+        tape_fed = str(fed_resources[keyfed]['pledges'][key1]['tape'])
+        disk_fed = str(fed_resources[keyfed]['pledges'][key1]['disk'])
+        #excluded tape for updating
+        cpu_db = str(site_resources[keysite]['pledges'][key1]['cpu'])
+        disk_db = str(site_resources[keysite]['pledges'][key1]['disk'])
+        tape_db = str(site_resources[keysite]['pledges'][key1]['tape'])
+        site_id = site_resources[keysite]['id']
+        if t1disk == 1:
+          if (not(str(cpu_fed) == str(cpu_db) and str(tape_fed) == str(tape_db))):
+            pledges_update.append({'siteid': site_id, 'cpu': cpu_fed, 'tape': tape_fed, 'disk': disk_db, 'year': key1})
+        else:
+          if (not(str(cpu_fed) == str(cpu_db) and tape_fed == tape_db and disk_fed == disk_db)):
+            pledges_update.append({'siteid': site_id, 'cpu': cpu_fed, 'tape': tape_fed, 'disk': disk_fed, 'year': key1})
+
+    return pledges_update
+
+  def _get_fed_site_tier(self):
+    """Returns a dictionary of federation names, sites, sites counter and tier level """
+    c, _ = self.api.execute("""select afn.name fed_name, afn.id fed_id, sfnm.site_id site_id, c.name alias,
+                                      (select count(*) from sites_federations_names_map tmp where tmp.federations_names_id = afn.id) counter,
+                                      (select pos from tier tr where s.tier = tr.id) tier
+                               from all_federations_names afn
+                               left outer join sites_federations_names_map sfnm on sfnm.federations_names_id = afn.id
+                               left join site s on sfnm.site_id = s.id 
+                                    join site_cms_name_map cmap on cmap.site_id = s.id
+                                    join cms_name c on c.id = cmap.cms_name_id order by tier, counter""")
+    fed_sites_list = {}
+    for row in c:
+      fed_name, fed_id, site_id, alias, counter, tier = row
+      if counter < 2:
+        if fed_name in fed_sites_list.keys():
+          #add site name
+          fed_sites_list[fed_name]['sites'][alias] = site_id
+        else:
+          # add site name and tier level
+          fed_sites_list[fed_name] = {'tier': tier, 'counter': counter, 'fed_id': fed_id, 'sites': {alias: site_id}}
+      else:
+        if tier == 1:
+        #need to skip because we have different tape sites
+          if fed_name in fed_sites_list.keys():
+          #add site name
+            fed_sites_list[fed_name]['sites'][alias] = site_id
+          else:
+          # add site name and tier level
+            fed_sites_list[fed_name] = {'tier': tier, 'counter': counter, 'fed_id': fed_id, 'sites': {alias: site_id}}
+    return fed_sites_list
+
+  def _get_all_sites_resources(self):
+    """Return all sites pledges"""
+    c, _ = self.api.execute("""select c.name alias, s.id id,
+                                      rp.pledgequarter quarter,
+                                      rp.cpu, rp.disk_store,
+                                      rp.tape_store
+                               from resource_pledge rp
+                               join site s on s.id = rp.site
+                               join site_cms_name_map cmap on cmap.site_id = s.id
+                               join cms_name c on c.id = cmap.cms_name_id
+                               order by s.name, rp.pledgedate DESC, rp.pledgequarter """)
+    
+    sites_resources = {}
+    for row in c:
+      alias, id, year, cpu, disk, tape = row
+      if alias in sites_resources.keys():
+        #check for year
+        if year not in sites_resources[alias]['pledges'].keys(): 
+          sites_resources[alias]['pledges'][year]= {'cpu': str(cpu), 'disk': disk, 'tape': tape}
+      else:
+        sites_resources[alias] = {'id': id, 'pledges': {year : {'cpu': str(cpu), 'disk': disk, 'tape': tape}}}
+    return sites_resources
 
   def _current(self):
     """Return the current federations pledges information from the database.
@@ -107,10 +234,10 @@ class RebusFetch(RESTEntity):
           pledges[name]["pledges"][year]["disk"]= disk;
           pledges[name]["pledges"][year]["tape"]= tape;
         else:
-          pledges[name]["pledges"][year] = {"cpu" : cpu, "disk" : disk, "tape" : tape};
+          pledges[name]["pledges"][year] = {"cpu" : str(cpu), "disk" : disk, "tape" : tape};
       else:
         pledges[name] = {"country" : country, "id" : id, "pledges" : {}};
-        pledges[name]["pledges"] = {year : {"cpu" : cpu, "disk": disk, "tape" : tape}};
+        pledges[name]["pledges"] = {year : {"cpu" : str(cpu), "disk": disk, "tape" : tape}};
     return pledges
 
   def _current_sites(self):
@@ -228,13 +355,13 @@ class RebusFetch(RESTEntity):
       orc_data = self._current();
     pledges_update = []
     for row in data_ins:
-      cpu_row=0; disk_row=0; tape_row = 0;
-      cpu_orc=0; disk_orc=0; tape_orc = 0;
+      cpu_row=''; disk_row=''; tape_row = '';
+      cpu_orc=''; disk_orc=''; tape_orc = '';
       fed_name = '';
       fed_id = 0;
       fed_year = 0;
       if 'cpu' in row.keys():
-        cpu_row = self.tryToInt(row['cpu'])
+        cpu_row = str(row['cpu'])
       if 'disk' in row.keys():
         disk_row = self.tryToInt(row['disk'])
       if 'tape' in row.keys():
@@ -246,7 +373,7 @@ class RebusFetch(RESTEntity):
           if 'year' in row.keys():
             fed_year = self.tryToInt(row['year']);
             if fed_year in orc_data[row['name']]['pledges'].keys():
-              cpu_orc = self.tryToInt(orc_data[row['name']]['pledges'][fed_year]['cpu']);
+              cpu_orc = str(orc_data[row['name']]['pledges'][fed_year]['cpu']);
               disk_orc = self.tryToInt(orc_data[row['name']]['pledges'][fed_year]['disk']);
               tape_orc = self.tryToInt(orc_data[row['name']]['pledges'][fed_year]['tape']);
               if (not(cpu_orc == cpu_row and tape_orc == tape_row and disk_orc == disk_row)):
@@ -446,12 +573,11 @@ class RebusFetchThread(Thread):
     # Process each user record returned
     rows = []
     id = 0;
-
     for name, values in ldresult.iteritems():
       for year, val1 in values["pledges"].iteritems():
         i = { 'name' : name, 'country' : values["country"], 'year' : str(year), 'cpu' : str(0), 'disk' : str(0), 'tape' : str(0)}
         if 'CPU' in val1.keys():
-          i['cpu'] = str(val1['CPU'])
+          i['cpu'] = str(val1['CPU']/float(1000))
         if 'Disk' in val1.keys():
           i['disk'] = str(val1['Disk'])
         if 'Tape' in val1.keys():

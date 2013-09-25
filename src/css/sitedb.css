@@ -300,3 +300,9 @@ input.invalid-value {
   font-style:		italic;
   padding:		.5em 0 0 0;
 }
+
+span.showallfedsites{
+color: blue;
+text-decoration:underline;
+cursor: pointer;
+}

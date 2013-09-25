@@ -4,7 +4,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
   var _self = this;
   /** Dropdown button */
   var _showfedsites = null;
-
+  var _showallfedsites = null;
   /** Current state object, for event callbacks. */
   var _state = null;
 
@@ -25,7 +25,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
       and with thousand separators. */
   var _shownum = function(n, prec)
   {
-    if(n == 0 || n== null) return 0;
+    if(n == 0 || n== null) return X.thousands(sprintf("%." + prec + "f", 0));
     return n ? X.thousands(sprintf("%." + prec + "f", n)) : "";
   };
 
@@ -77,6 +77,37 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     }
   };
 
+  /** Action handler for show/hide all federation sites after click */
+  var _showAllSites = function()
+  {
+    var elements = document.getElementsByClassName("showfedsites");
+    var main_ele = document.getElementsByClassName("showallfedsites");
+    for (var j = 0; j<elements.length; j++)
+    {
+      var attr = elements[j].getAttribute("x-name");
+      var ele = document.getElementsByClassName(attr);
+      for (var i = 0; i< ele.length; i++)
+      {
+        if (main_ele[0].innerHTML == "Collapse all")
+        {
+          ele[i].style.display = 'none';
+        }
+        else
+        {
+          ele[i].style.display = 'table-row';
+          if ((i+1) == ele.length)
+          {
+            ele[i].style.borderBottom = '1px solid black';
+          }
+        }
+      }
+    }
+    if (main_ele[0].innerHTML == "Collapse all") 
+      main_ele[0].innerHTML = "Expand all";
+    else
+      main_ele[0].innerHTML = "Collapse all";
+  }
+
   /** Action handler for show/hide pledge history after click */
   var _showPledgesHistory = function(name)
   {
@@ -102,6 +133,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
   this.attach = function()
    {
      _showfedsites = _self.doc.delegate("click", _showSites, ".showfedsites");
+     _showallfedsites = _self.doc.delegate("click", _showAllSites, ".showallfedsites");
      _showpledhist = _self.doc.delegate("click", _showPledgesHistory, ".showpledgehistory");
    }
 
@@ -109,6 +141,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
   this.detach = function()
   {
     _showfedsites.detach();
+    _showallfedsites.detach();
     if(_showpledhist) _showpledhist.detach();
     _views.detach();
   };
@@ -172,7 +205,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     });
 
     content = "";
-    for (var year = curyear + 3; year >= Math.min(curyear - 4, 2007); --year)
+    for (var year = curyear + 3; year >= 2009; --year)
     {
       content += "<div style='display:inline-block;width:6em;"
         + "border:1px solid #ddd;border-collapse:collapse"
@@ -215,7 +248,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     var faded = " style='color:#666;background-color:#f0f0f0'";
     content = "<thead><tr><th class='left' rowspan='2'>Country</th><th class='left' rowspan='2'>Site</th>"
       + "<th rowspan='2' title='Total processing power available to CMS'>"
-      + "CPU<br />[KHS06]</th>"
+      + "CPU<br />[kHS06]</th>"
       + "<th colspan='3' class='middle' title='Total storage allocated to"
       + " CMS'>Storage [TB]</th><th rowspan='2'>ESP credit</th>"
       + "</tr><tr><th>Tape</th><th>Disk</th><th>Local</th>"
@@ -224,6 +257,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
       var sites = [], pledged = {};var sitesfed = {};
       var total = { npledged: 0, cpu: 0, local_store: 0,
                     tape_store: 0, disk_store: 0};
+    if (t != "Tier 3"){
     Y.each(state.sitesByTier[t], function(s) {
         if ((! cc && ! root)
             || (cc && s.cc == cc)
@@ -283,7 +317,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
           + (total.npledged ? "" : faded)
           + ">"+ head +"<th class='left'>" + Y.Escape.html(t)
           + " (" + total.npledged + ")"
-          + head + _shownum(total.cpu, 1)
+          + head + _shownum(total.cpu, 2)
           + head + _shownum(total.tape_store, 1)
           + head + _shownum(total.disk_store, 1)
           + head + _shownum(total.local_store, 1)
@@ -317,8 +351,8 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
        content_temp += "<td class='left'>"+fed_country+"</td>";
        content_temp += "<td class ='left'>";
        content_temp += "<a class='showfedsites' href='#' x-name='"+temp_fed_name+"'>"+b["fed_name"]+"</a>";
-       content_temp += "</td><td>"+_shownum(fed_cpu, 0)+"</td>";
-       content_temp += "<td>"+_shownum(fed_tape, 0)+"</td><td>"+_shownum(fed_disk, 0)+"</td><td></td><td></td></tr>";
+       content_temp += "</td><td>"+_shownum(fed_cpu, 2)+"</td>";
+       content_temp += "<td>"+_shownum(fed_tape, 1)+"</td><td>"+_shownum(fed_disk, 1)+"</td><td>"+_shownum(0, 1)+"</td><td></td></tr>";
        temp_id = "class='"+temp_fed_name+"' style='display:none;'";
        }
        Y.each(b.sites, function(s) {
@@ -328,8 +362,8 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
                    ? s.resource_pledges[qkey[0]] : null);
           var espval = null;
           var espval_ins = '';
-          var espval = ( s.canonical_name in espcredits
-                        ? (qyear in espcredits[s.canonical_name]["esp_values"] ? espcredits[s.canonical_name]["esp_values"][qyear]["esp_credit"] : null) : null)
+          var espval = ( s.id in espcredits
+                        ? (qyear in espcredits[s.id]["esp_values"] ? espcredits[s.id]["esp_values"][qyear]["esp_credit"] : null) : null)
           if (espval) espval_ins = espval;
           if (fed_add || p || cc || root)
           {
@@ -340,15 +374,15 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
               content +=
               "<tr" + (qkey ? "" : faded) + " "+temp_id+"><td></td><td class='left'>"
               + _self.pledgeLink(instance, s, null, "/" + vquarter)
-              + cell + _shownum(p && p.cpu, 1)
-              + cell + _shownum(p && p.tape_store, 0)
+              + cell + _shownum(p && p.cpu, 2)
+              + cell + _shownum(p && p.tape_store, 1)
               + cell + _shownum(p && p.disk_store, 1)
               + cell + _shownum(p && p.local_store, 1)
               + cell;
               if(isgadmin)
               {
                 content += "<input class='add-esp-value'"
-                + "x-current='"+espval+"'  value='"+espval_ins+"' x-site='"+ s.canonical_name
+                + "x-current='"+espval+"'  value='"+espval_ins+"' x-site='"+ s.id
                 +"' x-year='"+ qyear +"' x-element='add-esp-value' type='text' placeholder='New ESP Credit value' style='width:80%'"
                 + " /></td></tr>";
               }
@@ -359,15 +393,15 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
             content +=
               "<tr "+temp_id+"><td></td><td class='left'>"
               + _self.pledgeLink(instance, s, null, "/" + vquarter)
+              + cell + _shownum(0, 2)
               + cell + _shownum(0, 1)
-              + cell + _shownum(0, 0)
-              + cell + _shownum(0, 0)
+              + cell + _shownum(0, 1)
               + cell + _shownum(0, 1)
               + cell;
               if(isgadmin)
               {
                 content += "<input class='add-esp-value'"
-                + "x-current='"+espval+"'  value='"+espval_ins+"' x-site='"+ s.canonical_name
+                + "x-current='"+espval+"'  value='"+espval_ins+"' x-site='"+ s.id
                 + "' x-year='"+ qyear +"' x-element='add-esp-value' type='text' placeholder='New ESP Credit value' style='width:80%'"
                 + " /></td></tr>";
               }
@@ -377,17 +411,18 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
         });
       });
         content += "</tbody>";
-      }
+      }}
     });
+   
     content += "<thead class='tier'><tr"
       + (summary.npledged ? "" : faded)
       + "><th class='left'>TOTAL"
       + " (" + summary.npledged + ")"
-      + head + _shownum(summary.cpu, 1)
+      + head + head + _shownum(summary.cpu, 2)
       + head + _shownum(summary.tape_store, 1)
       + head + _shownum(summary.disk_store, 1)
       + head + _shownum(summary.local_store, 1)
-      + head + " </th>"+head+"</th></tr></thead><tbody>";
+      + head + " </th></tr></thead><tbody>";
     view.content("pledges", content);
     view.render();
     _self.doc.all("button, input").each(function(n) {
@@ -424,7 +459,6 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
              if (!(x_current == value))
              {
                update.push({'site': x_site, 'value': value, 'year': x_year});
-               update_message += " Site: "+x_site+ " new value: "+ value + " old value: "+ x_current;
                if (!value.match(/^([0-9]{1,10})([.][0-9]{1,})?$/))
                {
                  error_message += "\n Site: "+x_site+", value: "+ value;
@@ -438,8 +472,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     if (update && !error_message)
     {
       X.confirm(Y, "Rewrite ESP credit values for year '" + year + "' with "
-                + " these values : " + update_message
-                + "?",
+                + " entered values?",
                 "Update", function() {
                   for (var i=0; i< update.length; i++){
                     _state.modify([{
@@ -477,13 +510,15 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     var body, content, quarter, qyear, qpart;
     var now = new Date();
     var curyear = now.getFullYear();
-    var quarters = {}, vquarter = unescape(req.params.quarter) || "";
+    var quartersglobal = {}, quarters = {}, vquarter = unescape(req.params.quarter) || "";
     var site = unescape(req.params.site);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
+    var sitesfed = state.federationsByAlias;
     _self.title(state, site, "Pledges");
     _self.loading(state);
     var isadmin = (state.isGlobalAdmin() || state.hasSiteRole("Site Executive", site));
+    var isgadmin = state.isGlobalAdmin();
     var qmatch = vquarter && vquarter.match(/^(20(?:0[789]|1[0-9]|20))$/);
     if (! qmatch)
     {
@@ -495,7 +530,14 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     }
 
     var maxyear = curyear + 3;
-    var minyear = Math.min(curyear - 4, 2007);
+    var minyear = curyear + 1;
+    if (isgadmin)
+    {
+      minyear = 2007;
+    }
+    for (var year = minyear; year <= maxyear; ++year)
+        quartersglobal[year] = year;
+
     var obj = (site in state.sitesByCMS && state.sitesByCMS[site]);
     var pledges = (obj && obj.resource_pledges) || {};
     var site_pledges = (obj && obj.history_resource_pledges) || {};
@@ -504,9 +546,10 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
       minyear = Math.min(minyear, year);
       maxyear = Math.max(maxyear, year);
     });
+    if (minyear < curyear + 1) minyear = curyear + 1;
     for (var year = minyear; year <= maxyear; ++year)
         quarters[year] = year;
-
+   
     var view = _views.attach("quarter", _self.doc);
     view.value("cpu", "0");   view.validator("cpu", X.rxvalidate(gui.rx.FLOAT));
     view.value("tape", "0");  view.validator("tape", X.rxvalidate(gui.rx.FLOAT));
@@ -519,27 +562,48 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
     });
 
     content = "";
+    if (isgadmin)
+    {
+          Y.each(Object.keys(quartersglobal).sort(d3.descending), function(q) {
+      content +=
+        "<option value='" + q + "'"
+        + (q == quarter ? " selected='selected'" : "") + ">"
+        + quartersglobal[q] + "</option>";
+    });
+    }
+    else {
     Y.each(Object.keys(quarters).sort(d3.descending), function(q) {
       content +=
         "<option value='" + q + "'"
         + (q == quarter ? " selected='selected'" : "") + ">"
         + quarters[q] + "</option>";
     });
+    }
     view.content("quarter", content);
+
+    if (site in sitesfed)
+    {
+     if (sitesfed[site].site_count >= 2){
     view.style("edit", "display", isadmin ? "" : "none");
+     }
+     else if(sitesfed[site].site_count == 0){view.style("edit", "display", isadmin ? "" : "none");}
+     else{view.style("edit", "display", "none");}
+    }
+     else{view.style("edit", "display", isadmin? "" : "none");}
+
 
     content = "";
     var cell = "</td><td>";
-    Y.each(Object.keys(quarters).sort(d3.descending), function(q) {
+    Y.each(Object.keys(quartersglobal).sort(d3.descending), function(q) {
       if (q in pledges)
       {
         var temp_class = "class='"+site+"_"+ q +"' style='display:none; background-color:#dceafe'";
         var p = pledges[q];
         content +=
           "<tr><td class='left'>"
-          + "<a href=# class='showpledgehistory' x-name='" + site +"_"+q+"'>" + Y.Escape.html(quarters[q]) + "</a>"
-          + cell + _shownum(p.cpu, 1)
-          + cell + _shownum(p.tape_store, 0)
+          + "<a href=# class='showpledgehistory' x-name='" + site +"_"+q+"'>" + Y.Escape.html(quartersglobal[q]) + "</a>"
+          + cell + _shownum(p.cpu, 2)
+          + cell + _shownum(p.tape_store, 1)
           + cell + _shownum(p.disk_store, 1)
           + cell + _shownum(p.local_store, 1)
           + "</td></tr>";
@@ -548,12 +612,11 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
                     content +=
                        "<tr "+ temp_class +"><td class='left'>"
                      + getdate(s.pledge_date)
-                     + cell + _shownum(s.cpu, 1)
+                     + cell + _shownum(s.cpu, 2)
                      + cell + _shownum(s.tape_store, 1)
                      + cell + _shownum(s.disk_store, 1)
                      + cell + _shownum(s.local_store, 1)
                      + "</td></tr>";
-
           });
         }
       }
@@ -570,7 +633,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
         {
         fedPledges = state.federationsPledges[fedName].pledges;
         hist_pledges = state.federationsPledges[fedName].history_pledges;
-        Y.each(Object.keys(fedPledges), function(i) {
+        Y.each(Object.keys(fedPledges).sort(d3.descending), function(i) {
              var p  = fedPledges[i];
              var temp_fed_name = site+"_"+i+ "_feder";
              var temp_class = "class='"+temp_fed_name+"' style='display:none; background-color:#dceafe'";
@@ -578,7 +641,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
              content +=
                "<tr><td class='left'>"
               + "<a href=# class='showpledgehistory' x-name='" + temp_fed_name +"'>" + Y.Escape.html(i) + "</a>"
-              + cell + _shownum(p.cpu, 1)
+              + cell + _shownum(p.cpu, 2)
               + cell + _shownum(p.tape, 1)
               + cell + _shownum(p.disk, 1)
               + cell + _shownum(0, 1)
@@ -590,7 +653,7 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
              content +=
                        "<tr "+ temp_class +"><td class='left'>"
                      + getdate(s.timestamp)
-                     + cell + _shownum(s.cpu, 1)
+                     + cell + _shownum(s.cpu, 2)
                      + cell + _shownum(s.tape, 1)
                      + cell + _shownum(s.disk, 1)
                      + cell + _shownum(0, 1)

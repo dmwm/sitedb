@@ -322,14 +322,14 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         var pledgeTime = null;
         var quarter = null;
 	var quarters = Object.keys(s.resource_pledges).sort(d3.descending);
-        var pledge = quarters.length ? s.resource_pledges[quarters[0]] : null;
+        var pledge = quarters.length ? s.resource_pledges[(new Date()).getFullYear()] : null;
         if (pledge)
         {
           var t = new Date();
           t.setTime(pledge.pledge_date * 1000);
           pledgeTime = sprintf("%s %d, %d", X.MONTH[t.getMonth()],
                                t.getDate(), t.getFullYear());
-          quarter = quarters[0].replace(/^(\d+)\.(\d+)$/, "$1q$2");
+          quarter = (new Date()).getFullYear().toString();
         }
 
         view.content("pledges-head",
