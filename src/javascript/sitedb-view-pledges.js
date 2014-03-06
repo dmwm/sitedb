@@ -594,6 +594,11 @@ var Pledges = X.inherit(View, function(Y, gui, rank)
 
     content = "";
     var cell = "</td><td>";
+    
+    quartersglobal = {}
+    for (var year = 2007; year <=maxyear; year++)
+        quartersglobal[year] = year;
+    
     Y.each(Object.keys(quartersglobal).sort(d3.descending), function(q) {
       if (q in pledges)
       {
