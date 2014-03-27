@@ -256,7 +256,13 @@ class LdapSyncThread(Thread):
       m = regexp.match(input)
       if m: return m
     if input not in self._warnings:
-      cherrypy.log("WARNING: ldap data failed validation: '%s'" % input)
+      #Printing to logs only ascii encoded string
+      try:
+          input.decode('ascii')
+      except UnicodeDecodeError:
+          cherrypy.log("WARNING: ldap data failed validation, binary input, skipped printing.")
+      else:
+          cherrypy.log("WARNING: ldap data failed validation: '%s'" % input[:1000])
       self._warnings[input] = now
     return None
     
