@@ -4,7 +4,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
   var _ALIASES = ["CMS", "PhEDEx", "LCG"];
 
   /** Resource types. */
-  var _RESOURCES = ["CE", "SE"];
+  var _RESOURCES = ["SE"];
 
   /** Myself. */
   var _self = this;
@@ -312,9 +312,6 @@ var Sites = X.inherit(View, function(Y, gui, rank)
 
         view.content("hosts-head",
                      _self.siteLink(instance, s, "Hosts", "/resources"));
-        view.content("ce",
-                     s.resources.CE.map(function(i) {
-                       return Y.Escape.html(i.fqdn); }).join("<br />"));
         view.content("se",
                      s.resources.SE.map(function(i) {
                        return Y.Escape.html(i.fqdn); }).join("<br />"));

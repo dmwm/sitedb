@@ -200,7 +200,7 @@ var State = function(Y, gui, instance)
     // Basic site records.
     Y.each(_data['sites'].value || [], function(i) {
       var site = { cc: null, canonical_name: i.site_name, name_alias: {},
-                   resources: { CE: [], SE: [] },
+                   resources: { SE: [] },
                    child_sites: [], parent_site: null,
                    resource_pledges: {}, pinned_software: {}, history_resource_pledges: {},
                    responsibilities: {}
@@ -230,7 +230,7 @@ var State = function(Y, gui, instance)
       }
     });
 
-    // Site resources (CE, SE).
+    // Site resources (SE).
     Y.each(_data['site-resources'].value || [], function(i) {
       if (i.site_name in byname)
       {
