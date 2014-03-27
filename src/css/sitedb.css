@@ -236,14 +236,14 @@ input.invalid-value {
 
 #content .rmbutton {
   cursor:		pointer;
-  float:                right;
+  float:                left;
 }
 
 #content .rmicon {
   background:           url(/sitedb/static/?sitedb/images/delete-small.gif) no-repeat;
-  visibility:		hidden;
   display:		block;
-  opacity:		0.6;
+  opacity:		0.4;
+  margin:               3px 5px 0px 0px;
   height:		11px;
   width:		16px;
 }
