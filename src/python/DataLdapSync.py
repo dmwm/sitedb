@@ -182,7 +182,7 @@ class LdapSyncThread(Thread):
 
   # The buggy ca.cern.ch user interface allows to put anything, so some users
   # have uploaded CA certificates or even SSH keys. So try to ignore them.
-  RX_ALTDN = re.compile(r"(?iu)^X509:.*<S>(([A-Z]+=([-\w _@'.()/]+),?)*(?<!berosservice|CERN Root CA|on Authority))$")
+  RX_ALTDN = re.compile(r"(?iu)^X509:.*<S>(([A-Z]+=([-\w _@'.()/]+),?)*(?<!berosservice|CERN Root CA|on Authority|s,CN=lsfcert|s,CN=acronmc))$")
 
   def __init__(self, app, baseurl, mount, cacertdir = "/etc/grid-security/certificates", minreq = 1000, interval = 300, instance = "test"):
     Thread.__init__(self, name = "LdapSync")
