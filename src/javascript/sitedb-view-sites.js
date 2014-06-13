@@ -499,6 +499,8 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         if (label in obj.name_alias)
         {
           var v = obj.name_alias[label];
+          if (kind == "PSN")
+            kind = "Processing";
           content += "<tr><td rowspan='" + v.length + "'>"
                      + Y.Escape.html(kind) + "</td>";
           Y.each(v, function(alias, ix) {

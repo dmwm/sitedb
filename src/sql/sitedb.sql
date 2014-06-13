@@ -495,6 +495,18 @@ create table phedex_node_cms_name_map(
     on delete cascade
 );
 
+create table psn_node_phedex_name_map(
+  phedex_id                               number(10) not null,
+  psn_id                   number(10) not null,
+  constraint fk_psn_node_phedex_id
+    foreign key (phedex_id) references phedex_node (id)
+    on delete cascade,
+  constraint fk_psn_node_id
+    foreign key (psn_id) references psn_node (id)
+    on delete cascade,
+  constraint uk_psn_id unique (phedex_id, psn_id)
+);
+
 create table resource_cms_name_map(
   resource_id			number(10) not null,
   cms_name_id			number(10) not null,

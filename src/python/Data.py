@@ -15,6 +15,7 @@ from SiteDB.DataFederationsPledges import *
 from SiteDB.DataRebusFetch import *
 from SiteDB.DataESPCredit import *
 from SiteDB.DataUserPNNs import *
+from SiteDB.DataProcessing import *
 
 class Data(DatabaseRESTApi):
   """Server object for REST data access API."""
@@ -39,6 +40,7 @@ class Data(DatabaseRESTApi):
                 "site-responsibilities":  UserSites(app, self, config, mount),
                 "group-responsibilities": UserGroups(app, self, config, mount),
                 "data-responsibilities":  UserPNNs(app, self, config, mount),
+                "data-processing":        Processing(app, self, config, mount),
                 "federations":            Federations(app, self, config, mount),
                 "federations-sites":      FederationsSites(app, self, config, mount),
                 "federations-pledges":    FederationsPledges(app, self, config, mount),

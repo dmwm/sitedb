@@ -17,7 +17,8 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     group: "view-admin-group",
     role: "view-admin-role",
     site: "view-admin-site",
-    federation: "view-admin-federation"
+    federation: "view-admin-federation",
+    pnn: "view-admin-pnn"
   });
 
   /** Invoke view constructor. */
@@ -134,7 +135,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                 "pnn_name": pnn.name },
         message: "Adding role '" + Y.Escape.html(role.title)
                  + "' for '" + Y.Escape.html(person.fullname)
-                 + " [" + Y.Escape.html(person.email) + "] for PNN '"
+                 + " [" + Y.Escape.html(person.email) + "] for Data location '"
                  + Y.Escape.html(pnn.name) + "'"
       }]);
 
@@ -566,7 +567,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     });
     view.content("site", content);
 
-    content = "<option value=''>Select PNN</option>";
+    content = "<option value=''>Select Data Location</option>";
     Y.each(pnns, function(s) {
       if (isgadmin)
         content += "<option value='" + X.encodeAsPath(s.name)
@@ -811,12 +812,9 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     if (obj)
     {
       view.content("title", section + " " + Y.Escape.html(title));
-
     view.once(_selectSite, state, view, "group-federation", function(p) {
      _addFederationSite(view.valueOf("federations-select"), view.__site, null, p);
      });
-
-
 
       content = "";
       Y.each(roles, function(r) {
@@ -847,12 +845,92 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     });
  };
 
+  /** Manage site roles. For unprivileged users just show the members for
+      this site for various different roles. For global admins and the
+      site executives allow adding and removing members. */
+  this.managePnn = function(req)
+  {
+    var name = unescape(req.params.name);
+    var instance = unescape(req.params.instance);
+    var state = _self.require.call(_self, instance);
+    _self.loading(state);
+    _state = state;
+
+    var roles = Y.Object.values(state.rolesByTitle).sort(function(a, b) {
+      return d3.ascending(a.canonical_name, b.canonical_name); });
+
+    var pnns_list = state.pnns;
+    var isadmin = state.isGlobalAdmin();
+    var users = state.peopleByAcc;
+    var obj, title, content;
+    var section = "Data Location";
+    if (name in state.pnns)
+      obj = state.pnns[name], title = obj.name;
+    else if (state.complete)
+    {
+      gui.history.replace("/" + instance + "/admin");
+      return;
+    }
+    var view = _views.attach("pnn", _self.doc);
+    view.__pnn = obj && name;
+    view.once(_selectPerson, state, view, "person", function(p) {
+      _addRoleMember(view.valueOf("role"), null, null, p, view.__pnn);
+    });
+    content = "<option value=''>Select role</option>";
+    Y.each(isadmin ? roles : [], function(r) {
+      content += "<option value='" + X.encodeAsPath(r.canonical_name)
+                 + "'>" + Y.Escape.html(r.title) + "</option>";
+    });
+    view.content("role", content);
+    _self.title(state, title, section + "s", "Admin");
+    if (obj)
+    {
+      view.content("title", section + " " + Y.Escape.html(title));
+      content = "";
+      Y.each(roles, function(r) {
+        if (r.title in obj["roles"])
+        {
+          var v = obj["roles"][r.title];
+          content += "<tr><td rowspan='" + v.length + "'>"
+                     + Y.Escape.html(r.title) + "</td>";
+          Y.each(v, function(p, ix) {
+            content += (ix ? "<tr>" : "") + "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(r.title) + "'"
+                       + " x-pnn='" + X.encodeAsPath(obj.name) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
+                       + " x-admin='" + (isadmin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, users[p.username])
+                       + "</td></tr>";
+          });
+        }
+      });
+      view.content("members", content);
+    }
+    else
+    {
+      view.content("title", "Loading...");
+      view.content("members", "");
+    }
+    view.render();
+    _self.doc.all(".rmbutton").each(function(n) {
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+    _self.doc.all("select, input").each(function(n) {
+      n.set("disabled", !isadmin);
+      n.setStyle("display", isadmin ? "" : "none");
+    });
+  };
+
   // Handle history controller state.
   gui.history.route("/:instance/admin", this.main);
   gui.history.route("/:instance/admin/group/:name", this.manageGroup);
   gui.history.route("/:instance/admin/role/:name", this.manageRole);
   gui.history.route("/:instance/admin/site/:name", this.manageSite);
   gui.history.route("/:instance/admin/federation/:name", this.manageFederation);
+  gui.history.route("/:instance/admin/pnn/:name", this.managePnn)
+
   // Response handle to window resize.
   this.onresize = function()
   {

@@ -63,7 +63,7 @@
           ><tr><td><i>Tier</i></td><td x-element='tier'></td></tr
           ><tr><td><i>CMS</i></td><td x-element='cms'></td></tr
           ><tr><td><i>PhEDEx</i></td><td x-element='phedex'></td></tr
-          ><tr><td><i>PSN</i></td><td x-element='psn'></td></tr
+          ><tr><td><i>Processing</i></td><td x-element='psn'></td></tr
           ><tr><td><i>LCG</i></td><td x-element='lcg'></td></tr
           ><tr><td><i>Location</i></td><td x-element='location'></td></tr
           ><tr><td><i>Usage</i></td><td x-element='usage'></td></tr
@@ -151,7 +151,7 @@
           ><option value='cms'>CMS</option
           ><option value='phedex'>PhEDEx</option
           ><option value='lcg'>LCG</option
-          ><option value='psn'>PSN</option></select></td
+          ><option value='psn'>Processing</option></select></td
           ><td><input x-element='name' type='text'
             placeholder='Alias to add' /></td></tr></tbody
        ><tbody x-element='names'></tbody
@@ -317,6 +317,27 @@
      ><tbody x-element='table'></tbody
    > <thead><tr><th rowspan='2' colspan='5' class='middle'>Federation Pledges</th></tr><tr></tr><tbody x-element='fed-table'></tbody></table
   ></script
+  ><script type="text/x-template" id="t-view-data-main"
+    ><div x-element='pnns' style='width:95%; overflow:auto'
+      ><div x-element='result' style='width:100%;
+        column-width:150px;-moz-column-width:150px;-webkit-column-width:150px;
+        column-gap:10px;-moz-column-gap:10px;-webkit-column-gap:10px'
+    ></div></div
+   ><div x-element='info' style='width:95%; margin-top:10px'
+     ><div style='width:100%;margin:0 0 10px;padding:5px;border:1px solid #ddd;background-color:#eee'
+       ><h2><span x-element='pnn-head'></span>&nbsp;<span x-element='pnn-site-head'></span></h2
+       ><div class='group'
+         ><h3 x-element='psn-head'></h3
+          ><dl x-element='psns'></dl
+       ><input x-element='group-psn' type='text'
+            placeholder='Name to add' style='width:25em' />
+       </div><div class='group'
+         ><h3 x-element='people-head'></h3
+         ><dl x-element='responsibilities'></dl
+       ></div
+     ></div
+   ></div
+  ></script
   ><script type="text/x-template" id="t-view-admin-main"
    ><div class='group'><h2>Roles</h2><table
      ><thead><tr
@@ -408,7 +429,7 @@
             placeholder='Name to add' style='width:25em' /></td
        ></tr></tbody
        ><tbody x-element='site-members'></tbody
-       ><thead><tr><th style='text-align:left'>PNN</th
+       ><thead><tr><th style='text-align:left'>Data Location</th
          ><th style='text-align:left'>Member</th
        ></tr></thead
        ><tbody><tr><td><select x-element='pnn' /></td
@@ -419,7 +440,22 @@
        ></table
    ></div
    ></script
-   > <script type="text/x-template" id="t-view-admin-federation"
+   ><script type="text/x-template" id="t-view-admin-pnn"
+   ><div style='width:95%;margin:0 0 1em'
+     ><h2 x-element='title'></h2
+     ><table
+       ><thead><tr><th style='text-align:left'>Role</th
+         ><th style='text-align:left'>Member</th
+       ></tr></thead
+       ><tbody><tr><td><select x-element='role' /></td
+         ><td><input x-element='person' type='text'
+            placeholder='Name to add' style='width:25em' /></td
+       ></tr></tbody
+       ><tbody x-element='members'></tbody
+     ></table
+   ></div
+  ></script
+  ><script type="text/x-template" id="t-view-admin-federation"
    ><div style='width:95%;margin:0 0 1em'
      ><h2 x-element='title'></h2
      ><table
@@ -434,6 +470,6 @@
      ></table
    ></div
   ></script
-  ><script type="text/javascript" src="@MOUNT@/static?rest/preamble.js&yui/yui/yui.js&d3/d3/d3.min.js&sitedb/javascript/sprintf.js&xregexp/xregexp.js&xregexp/xregexp-unicode-base.js&xregexp/xregexp-unicode-categories.js&sitedb/javascript/utils.js&sitedb/javascript/sitedb-state.js&sitedb/javascript/sitedb-app.js&sitedb/javascript/sitedb-view.js&sitedb/javascript/sitedb-view-sites.js&sitedb/javascript/sitedb-view-pledges.js&sitedb/javascript/sitedb-view-people.js&sitedb/javascript/sitedb-view-admin.js&sitedb/javascript/sitedb-start.js"></script
+  ><script type="text/javascript" src="@MOUNT@/static?rest/preamble.js&yui/yui/yui.js&d3/d3/d3.min.js&sitedb/javascript/sprintf.js&xregexp/xregexp.js&xregexp/xregexp-unicode-base.js&xregexp/xregexp-unicode-categories.js&sitedb/javascript/utils.js&sitedb/javascript/sitedb-state.js&sitedb/javascript/sitedb-app.js&sitedb/javascript/sitedb-view.js&sitedb/javascript/sitedb-view-sites.js&sitedb/javascript/sitedb-view-pledges.js&sitedb/javascript/sitedb-view-people.js&sitedb/javascript/sitedb-view-admin.js&sitedb/javascript/sitedb-view-data.js&sitedb/javascript/sitedb-start.js"></script
  ></body
 ></html>

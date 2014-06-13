@@ -6,4 +6,4 @@ YUI({ base: REST_SERVER_ROOT + "/static/yui",
      "io-base", "io-form", "json-parse", "autocomplete",
      "autocomplete-filters", "autocomplete-filters-accentfold",
      "autocomplete-highlighters", "autocomplete-highlighters-accentfold",
-     function(Y){ new SiteDB(Y, [Sites, Pledges, People, Admin], REST_DEBUG); });
+     function(Y){ new SiteDB(Y, [Sites, Pledges, People, Data, Admin], REST_DEBUG); });

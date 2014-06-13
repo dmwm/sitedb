@@ -18,7 +18,7 @@ var State = function(Y, gui, instance)
     "site-resources", "site-associations", "resource-pledges",
     "pinned-software", "site-responsibilities", "group-responsibilities",
     "data-responsibilities", "federations", "federations-sites",
-    "federations-pledges", "esp-credit"];
+    "federations-pledges", "esp-credit", "data-processing"];
 
   /** Pending XHR requests. */
   var _pending = {};
@@ -83,6 +83,9 @@ var State = function(Y, gui, instance)
   /** Current PNNs */
   this.pnnsByRole = {};
 
+  /** PSN`s by PNN */
+  this.psnsByPNN = {}
+
   /** Return server data URL for resource @a name. */
   var _url = function(name)
   {
@@ -128,6 +131,7 @@ var State = function(Y, gui, instance)
     var espcredits={};
     var pnns_list={};
     var pnnsByRole = {};
+    var psns_list={};
 
     // ESP Credits
        Y.each(_data['esp-credit'].value || [], function(i) {
@@ -237,8 +241,21 @@ var State = function(Y, gui, instance)
         }
         if (i.type == "phedex" && ! (i.alias in pnns_list))
         {
-         pnns_list[i.alias] = {"roles": {}, "psn":{}, "name": i.alias};
+         pnns_list[i.alias] = {"roles": {}, "name": i.alias, "site_name" : byname[i.site_name]["canonical_name"]};
         }
+        if (i.type == "psn")
+        {
+         psns_list[i.alias] = {"name": i.alias, "site_name": i.site_name, "canonical_name" : byname[i.site_name]["canonical_name"]};
+        }
+
+      }
+    });
+
+    Y.each(_data['data-processing'].value || [], function(i) {
+      if (i.phedex_name in pnns_list){
+         if (!("psn" in pnns_list[i.phedex_name]))
+           pnns_list[i.phedex_name]["psn"] = [];
+         pnns_list[i.phedex_name]["psn"].push(i.psn_name);
       }
     });
 
@@ -246,14 +263,14 @@ var State = function(Y, gui, instance)
       if (i.pnn_name in pnns_list)
       {
         if (i.role in pnns_list[i.pnn_name]["roles"])
-          pnns_list[i.pnn_name]["roles"][i.role].push(i.username);
+          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role});
         else
         {
-          new_pnn_role = {};
-          new_pnn_role[i.role] = [i.username];
-          pnns_list[i.pnn_name]["roles"] = new_pnn_role;
+          pnns_list[i.pnn_name]["roles"][i.role] = [];
+          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role}); 
         }
       }
+
       if (! (i.role in pnnsByRole))
         pnnsByRole[i.role] = {}
       if (! (i.pnn_name in pnnsByRole[i.role]))
@@ -424,8 +441,7 @@ var State = function(Y, gui, instance)
     _self.federationsByAlias = federationsbysitealias;
     _self.pnns = pnns_list;
     _self.pnnsByRole = pnnsByRole;
-
-
+    _self.psnsByPNN = psns_list;
   };
 
   /** Final handler for state update. Rebuilds high-level data and calls

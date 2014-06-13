@@ -636,6 +636,18 @@ var View = function(Y, gui, rank, label, required)
            + "'>" + Y.Escape.html(title || name) + "</a>";
   };
 
+  /** Generate link to a pnn. */
+  this.pnnLink = function(instance, pnn, title)
+  {
+    var name = pnn.name;
+
+    return "<a class='internal' href='" + REST_SERVER_ROOT + "/"
+           + X.encodeAsPath(instance) + "/data/"
+           + X.encodeAsPath(name) 
+           + "'>" + Y.Escape.html(title || name) + "</a>";
+  };
+
+
   /** Generate link to a site pledge. */
   this.pledgeLink = function(instance, site, title, tail)
   {
@@ -685,6 +697,15 @@ var View = function(Y, gui, rank, label, required)
            + X.encodeAsPath(instance) + "/admin/site/"
            + X.encodeAsPath(site.canonical_name)
            + (tail || "") + "'>" + Y.Escape.html(title || site.canonical_name) + "</a>";
+  };
+
+  /** Generate link to pnn contacts. */
+  this.pnnContactLink = function(instance, pnn, title, tail)
+  {
+    return "<a class='internal' href='" + REST_SERVER_ROOT + "/"
+           + X.encodeAsPath(instance) + "/admin/pnn/"
+           + X.encodeAsPath(pnn.name)
+           + (tail || "") + "'>" + Y.Escape.html(title || pnn.name) + "</a>";
   };
 
   /** Generate link to federation. */
