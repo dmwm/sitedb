@@ -82,7 +82,7 @@ RX_PHONE     = re.compile(r"^([0-9]{5,7}|\+[0-9]+([- .]?[0-9]+)*)?$")
 RX_IM        = re.compile(r"(?i)^((aol|gtalk|msn|icq|jabber):[-A-Z0-9_.%+]+(@([-A-Z0-9]+\.)+[A-Z]{2,5})?)?$")
 
 #: Regular expression for possible name alias types.
-RX_NAME_TYPE = re.compile(r"^(lcg|cms|phedex)$")
+RX_NAME_TYPE = re.compile(r"^(lcg|cms|phedex|psn)$")
 
 #: Regular expression for possible resource types.
 RX_RES_TYPE  = re.compile(r"^(SE|CE)$")

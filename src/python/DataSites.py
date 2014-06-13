@@ -217,6 +217,10 @@ class SiteNames(RESTEntity):
       (select 'phedex' type, s.name site_name, p.name alias
        from site s
        join phedex_node p on p.site = s.id)
+      union
+      (select 'psn' type, s.name site_name, p.name alias
+       from site s
+       join psn_node p on p.site = s.id)
       """)
 
   @restcall
@@ -237,6 +241,7 @@ class SiteNames(RESTEntity):
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
     phedex = filter(lambda b: b['type'] == 'phedex', binds)
+    psn = filter(lambda b: b['type'] == 'psn', binds)
     for b in binds: del b['type']
     updated = 0
 
@@ -272,6 +277,15 @@ class SiteNames(RESTEntity):
       self.api.rowstatus(c, len(phedex))
       updated += c.rowcount
 
+    if psn:
+      c, _ = self.api.executemany("""
+        insert into psn_node (id, site, name)
+        select psn_node_sq.nextval, s.id, :alias
+        from site s where s.name = :site_name
+        """, psn)
+      self.api.rowstatus(c, len(psn))
+      updated += c.rowcount
+
     result = rows([{ "modified": updated }])
     trace = request.db["handle"]["trace"]
     trace and cherrypy.log("%s commit" % trace)
@@ -297,6 +311,7 @@ class SiteNames(RESTEntity):
     lcg = filter(lambda b: b['type'] == 'lcg', binds)
     cms = filter(lambda b: b['type'] == 'cms', binds)
     phedex = filter(lambda b: b['type'] == 'phedex', binds)
+    psn = filter(lambda b: b['type'] == 'psn', binds)
     for b in binds: del b['type']
     updated = 0
 
@@ -332,6 +347,15 @@ class SiteNames(RESTEntity):
           and name = :alias
         """, phedex)
       self.api.rowstatus(c, len(phedex))
+      updated += c.rowcount
+
+    if psn:
+      c, _ = self.api.executemany("""
+        delete from psn_node
+        where site = (select s.id from site s where s.name = :site_name)
+          and name = :alias
+        """, psn)
+      self.api.rowstatus(c, len(psn))
       updated += c.rowcount
 
     result = rows([{ "modified": updated }])

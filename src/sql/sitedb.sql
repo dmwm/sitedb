@@ -124,7 +124,21 @@ create sequence phedex_node_sq increment by 1 start with 1;
 create index ix_phedex_node_site on phedex_node (site);
 create index ix_phedex_node_name on phedex_node (name);
 
-
+-- Site's psn nodes
+create table psn_node (
+  id                    number(10) not null,
+  site                  number(10) not null,
+  name                  varchar(100) not null,
+  --
+  constraint pk_psn_node primary key (id),
+  constraint fk_psn_node_site
+    foreign key (site) references site (id)
+  on delete cascade
+    -- cascade?  depends on how dependant psn becomes on this...
+);
+create sequence psn_node_sq increment by 1 start with 1;
+create index ix_psn_node_site on psn_node (site);
+create index ix_psn_node_name on psn_node (name);
 
 ----
 --   Site performance tables

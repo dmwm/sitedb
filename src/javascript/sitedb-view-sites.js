@@ -1,7 +1,7 @@
 var Sites = X.inherit(View, function(Y, gui, rank)
 {
   /** Alias types. */
-  var _ALIASES = ["CMS", "PhEDEx", "LCG"];
+  var _ALIASES = ["CMS", "PhEDEx", "LCG", "PSN"];
 
   /** Resource types. */
   var _RESOURCES = ["SE"];
@@ -287,6 +287,10 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         view.content("phedex",
                      ("phedex" in s.name_alias
                       ? s.name_alias.phedex.map(Y.Escape.html).join("<br />")
+                      : _none));
+        view.content("psn",
+                     ("psn" in s.name_alias
+                      ? s.name_alias.psn.map(Y.Escape.html).join("<br />")
                       : _none));
         view.content("lcg",
                      ("lcg" in s.name_alias
