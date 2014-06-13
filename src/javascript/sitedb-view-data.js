@@ -116,7 +116,7 @@ var Data = X.inherit(View, function(Y, gui, rank)
     var psns = state.psnsByPNN; 
     var pnnsByRole = state.pnnsByRole;
     var users = state.peopleByAcc;
-    var isadmin = state.isGlobalAdmin();
+    var isadmin = state.isGlobalAdmin() || state.isSitedbOperator();
     var obj, title, content;
     if (pnn in pnns_list)
       obj = pnns_list[pnn], title = obj.name; 

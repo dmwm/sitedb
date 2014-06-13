@@ -21,7 +21,7 @@ class Processing(RESTEntity):
       validate_strlist('phedex_name', param, safe, RX_NAME)
       validate_strlist('psn_name', param, safe, RX_NAME)
       validate_lengths(safe, 'phedex_name', 'psn_name')
-      authz_match(role=["Global Admin"], group=["global"])
+      authz_match(role=["Global Admin", "Operator"], group=["global","SiteDB"])
 
   @restcall
   @tools.expires(secs=300)

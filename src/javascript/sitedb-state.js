@@ -198,7 +198,7 @@ var State = function(Y, gui, instance)
 
     // People records.
     Y.each(_data['people'].value || [], function(i) {
-      var p = Y.merge({ fullname: i.email, roles: {}, sites: {}, groups: {} }, i);
+      var p = Y.merge({ fullname: i.email, roles: {}, sites: {}, groups: {}, pnns: {} }, i);
       if (p.im_handle)
         p.im_handle = p.im_handle.replace(/^none(:none)*$/gi, "");
       if (p.surname)
@@ -263,12 +263,23 @@ var State = function(Y, gui, instance)
       if (i.pnn_name in pnns_list)
       {
         if (i.role in pnns_list[i.pnn_name]["roles"])
-          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role});
+          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role, "pnn_name" : i.pnn_name});
         else
         {
           pnns_list[i.pnn_name]["roles"][i.role] = [];
-          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role}); 
+          pnns_list[i.pnn_name]["roles"][i.role].push({"username" : i.username, "role" : i.role, "pnn_name" : i.pnn_name}); 
         }
+      }
+      if (i.username in byacc && i.role in roles)
+      {
+        var pnn = pnns_list[i.pnn_name];
+        var role = roles[i.role];
+        var person = byacc[i.username];
+        r = person.roles;
+
+        if (! (i.role in r))
+          r[i.role] = { site: [], group: [], pnn: [] };
+        r[i.role].pnn.push(pnn);
       }
 
       if (! (i.role in pnnsByRole))
@@ -276,7 +287,7 @@ var State = function(Y, gui, instance)
       if (! (i.pnn_name in pnnsByRole[i.role]))
         pnnsByRole[i.role][i.pnn_name] = []
       pnnsByRole[i.role][i.pnn_name].push({'username': i.username, 'pnn': i.pnn_name});
-      });
+    });
 
     // Site resources (SE).
     Y.each(_data['site-resources'].value || [], function(i) {
@@ -339,7 +350,7 @@ var State = function(Y, gui, instance)
 
         r = person.roles;
         if (! (i.role in r))
-	  r[i.role] = { site: [], group: [] };
+	  r[i.role] = { site: [], group: [], pnn: [] };
 	r[i.role].site.push(site);
 
 	if (! (i.site_name in role.site))
@@ -360,7 +371,7 @@ var State = function(Y, gui, instance)
 
         r = person.roles;
         if (! (i.role in r))
-	  r[i.role] = { site: [], group: [] };
+	  r[i.role] = { site: [], group: [], pnn: [] };
 	r[i.role].group.push(group);
 
 	if (! (i.user_group in role.group))

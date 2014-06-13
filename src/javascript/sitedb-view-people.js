@@ -327,6 +327,7 @@ var People = X.inherit(View, function(Y, gui, rank)
     var person = unescape(req.params.person);
     var instance = unescape(req.params.instance);
     var state = _self.require.call(_self, instance);
+
     var p = ((person in state.peopleByAcc) && state.peopleByAcc[person]);
     _self.title(state, p ? p.fullname : person, "People");
     _self.loading(state);
@@ -368,7 +369,6 @@ var People = X.inherit(View, function(Y, gui, rank)
              + "</dd>");
       });
       view.content("sites", content || ("<dt>" + _none + "</dt><dd></dd>"));
-
       content = "";
       Y.each(roles, function(r) {
         var items = p.roles[r].group;
@@ -380,6 +380,18 @@ var People = X.inherit(View, function(Y, gui, rank)
              + "</dd>");
       });
       view.content("groups", content || ("<dt>" + _none + "</dt><dd></dd>"));
+
+      content = "";
+      Y.each(roles, function(r) {
+        var items = p.roles[r].pnn;
+        if (items.length)
+          content +=
+            ("<dt>" + Y.Escape.html(r) + "</dt><dd>"
+             + items.map(function(g) {
+                 return _self.pnnLink(instance, g); }).join("<br />")
+             + "</dd>");
+      });
+      view.content("pnns", content || ("<dt>" + _none + "</dt><dd></dd>"));
     }
     else
     {

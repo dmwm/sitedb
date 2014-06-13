@@ -131,6 +131,7 @@ create table psn_node (
   name                  varchar(100) not null,
   --
   constraint pk_psn_node primary key (id),
+  constraint uk_psn_node_name unique (name),
   constraint fk_psn_node_site
     foreign key (site) references site (id)
   on delete cascade

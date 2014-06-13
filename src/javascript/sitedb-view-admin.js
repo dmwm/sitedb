@@ -522,6 +522,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     Y.each(roles, function(i) { rolesByCName[i.canonical_name] = i; });
     Y.each(groups, function(i) { groupsByCName[i.canonical_name] = i; });
     var isgadmin = state.isGlobalAdmin();
+    var isgoadmin = state.isGlobalAdmin() || state.isSitedbOperator();
     var obj, title, content;
     var section = "Role";
     var description = '';
@@ -569,7 +570,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
 
     content = "<option value=''>Select Data Location</option>";
     Y.each(pnns, function(s) {
-      if (isgadmin)
+      if (isgoadmin)
         content += "<option value='" + X.encodeAsPath(s.name)
                    + "'>" + Y.Escape.html(s.name) + "</option>";
     });
@@ -648,7 +649,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + " x-role='" + X.encodeAsPath(obj.title) + "'"
                        + " x-pnn='" + X.encodeAsPath(p.pnn) + "'"
                        + " x-person='" + X.encodeAsPath(p.username) + "'"
-                       + " x-admin='" + (isgadmin ? "yes" : "no") + "'"
+                       + " x-admin='" + (isgoadmin ? "yes" : "no") + "'"
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, users[p.username])
                        + "</td></tr>";
@@ -860,7 +861,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
       return d3.ascending(a.canonical_name, b.canonical_name); });
 
     var pnns_list = state.pnns;
-    var isadmin = state.isGlobalAdmin();
+    var isadmin = state.isGlobalAdmin() || state.isSitedbOperator(); 
     var users = state.peopleByAcc;
     var obj, title, content;
     var section = "Data Location";

@@ -22,7 +22,7 @@ class UserPNNs(RESTEntity):
       validate_strlist('pnn_name', param, safe, RX_NAME)
       validate_strlist('role', param, safe, RX_LABEL)
       validate_lengths(safe, 'username', 'pnn_name', 'role')
-      authz_match(role=["Global Admin"], group=["global"])
+      authz_match(role=["Global Admin", "Operator"], group=["global","SiteDB"])
 
   @restcall
   @tools.expires(secs=300)
