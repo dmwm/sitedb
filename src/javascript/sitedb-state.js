@@ -17,7 +17,7 @@ var State = function(Y, gui, instance)
     "whoami", "roles", "groups", "people", "sites", "site-names",
     "site-resources", "site-associations", "resource-pledges",
     "pinned-software", "site-responsibilities", "group-responsibilities",
-    "federations", "federations-sites",
+    "data-responsibilities", "federations", "federations-sites",
     "federations-pledges", "esp-credit"];
 
   /** Pending XHR requests. */
@@ -77,6 +77,12 @@ var State = function(Y, gui, instance)
   /** Current ESP Credits */
   this.espcredit = {};
 
+  /** Current PNNs */
+  this.pnns = {};
+
+  /** Current PNNs */
+  this.pnnsByRole = {};
+
   /** Return server data URL for resource @a name. */
   var _url = function(name)
   {
@@ -120,6 +126,8 @@ var State = function(Y, gui, instance)
     var federationsbysitealias = {};
     var federationspledges = [];
     var espcredits={};
+    var pnns_list={};
+    var pnnsByRole = {};
 
     // ESP Credits
        Y.each(_data['esp-credit'].value || [], function(i) {
@@ -227,8 +235,31 @@ var State = function(Y, gui, instance)
           site.canonical_name = i.alias;
           bycms[i.alias] = site;
         }
+        if (i.type == "phedex" && ! (i.alias in pnns_list))
+        {
+         pnns_list[i.alias] = {"roles": {}, "psn":{}, "name": i.alias};
+        }
       }
     });
+
+    Y.each(_data['data-responsibilities'].value || [], function(i) {
+      if (i.pnn_name in pnns_list)
+      {
+        if (i.role in pnns_list[i.pnn_name]["roles"])
+          pnns_list[i.pnn_name]["roles"][i.role].push(i.username);
+        else
+        {
+          new_pnn_role = {};
+          new_pnn_role[i.role] = [i.username];
+          pnns_list[i.pnn_name]["roles"] = new_pnn_role;
+        }
+      }
+      if (! (i.role in pnnsByRole))
+        pnnsByRole[i.role] = {}
+      if (! (i.pnn_name in pnnsByRole[i.role]))
+        pnnsByRole[i.role][i.pnn_name] = []
+      pnnsByRole[i.role][i.pnn_name].push({'username': i.username, 'pnn': i.pnn_name});
+      });
 
     // Site resources (SE).
     Y.each(_data['site-resources'].value || [], function(i) {
@@ -391,6 +422,9 @@ var State = function(Y, gui, instance)
     _self.federationsNames = federationsnames;
     _self.federationsPledges = federationspledges;
     _self.federationsByAlias = federationsbysitealias;
+    _self.pnns = pnns_list;
+    _self.pnnsByRole = pnnsByRole;
+
 
   };
 

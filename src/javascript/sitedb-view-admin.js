@@ -24,7 +24,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
   View.call(this, Y, gui, rank, "Admin",
             ["whoami", "roles", "groups", "people", "sites",
              "site-responsibilities", "group-responsibilities",
-             "federations","federations-sites"]);
+             "data-responsibilities", "federations","federations-sites"]);
 
   /** Action handler for creating roles. */
   var _createRole = function(title)
@@ -91,7 +91,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
   };
 
   /** Action handler for adding a person to site or group role. */
-  var _addRoleMember = function(role, site, group, person)
+  var _addRoleMember = function(role, site, group, person, pnn)
   {
     role = role &&
       Y.Array.find(Y.Object.values(_state.rolesByTitle),
@@ -103,7 +103,8 @@ var Admin = X.inherit(View, function(Y, gui, rank)
 
     site = (site in _state.sitesByCMS) && _state.sitesByCMS[site];
 
-    if (! role || ! (group || site) || ! person)
+    pnn = (pnn in _state.pnns) && _state.pnns[pnn];
+    if (! role || ! (group || site || pnn) || ! person)
       return;
 
     if (group)
@@ -116,7 +117,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                  + " [" + Y.Escape.html(person.email) + "] in group '"
                  + Y.Escape.html(group.name) + "'"
       }]);
-    else
+    else if (site)
       _state.modify([{
         method: "PUT", entity: "site-responsibilities",
         data: { "username": person.username, "role": role.title,
@@ -126,6 +127,17 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                  + " [" + Y.Escape.html(person.email) + "] for site '"
                  + Y.Escape.html(site.canonical_name) + "'"
       }]);
+    else
+      _state.modify([{
+        method: "PUT", entity: "data-responsibilities",
+        data: { "username": person.username, "role": role.title,
+                "pnn_name": pnn.name },
+        message: "Adding role '" + Y.Escape.html(role.title)
+                 + "' for '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] for PNN '"
+                 + Y.Escape.html(pnn.name) + "'"
+      }]);
+
   };
 
   /** Action handler for removing a person from site or group role. */
@@ -138,17 +150,20 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     var site = X.getDOMAttr(x.node, "x-site");
     var group = X.getDOMAttr(x.node, "x-group");
     var person = X.getDOMAttr(x.node, "x-person");
+    var pnn = X.getDOMAttr(x.node, "x-pnn");
 
     if (! (role in _state.rolesByTitle)
         || (site && ! (site in _state.sitesByCMS))
         || (group && ! (group in _state.groupsByName))
-        || ! (person in _state.peopleByAcc))
+        || ! (person in _state.peopleByAcc)
+        || (pnn && ! (pnn in _state.pnns)))
       return;
 
     role = _state.rolesByTitle[role];
     site = (site && _state.sitesByCMS[site]);
     group = (group && _state.groupsByName[group]);
     person = _state.peopleByAcc[person];
+    pnn = (pnn && _state.pnns[pnn]);
 
     if (group)
       _state.modify([{
@@ -160,7 +175,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                  + " [" + Y.Escape.html(person.email) + "] in group '"
                  + Y.Escape.html(group.name) + "'"
       }]);
-    else
+    else if (site)
       _state.modify([{
         method: "DELETE", entity: "site-responsibilities",
         data: { "username": person.username, "role": role.title,
@@ -170,6 +185,17 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                  + " [" + Y.Escape.html(person.email) + "] for site '"
                  + Y.Escape.html(site.canonical_name) + "'"
       }]);
+     else if (pnn)
+      _state.modify([{
+        method: "DELETE", entity: "data-responsibilities",
+        data: { "username": person.username, "role": role.title,
+                "pnn_name": pnn.name },
+        message: "Removing role '" + Y.Escape.html(role.title)
+                 + "' from '" + Y.Escape.html(person.fullname)
+                 + " [" + Y.Escape.html(person.email) + "] for pnn '"
+                 + Y.Escape.html(pnn.name) + "'"
+      }]);
+
   };
 
   /** Make a YUI <input> node auto-complete for people. */
@@ -414,7 +440,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     var view = _views.attach("group", _self.doc);
     view.__group = obj && name;
     view.once(_selectPerson, state, view, "person", function(p) {
-      _addRoleMember(view.valueOf("role"), null, view.__group, p);
+      _addRoleMember(view.valueOf("role"), null, view.__group, p, null);
     });
 
     content = "<option value=''>Select role</option>";
@@ -488,6 +514,10 @@ var Admin = X.inherit(View, function(Y, gui, rank)
       return d3.ascending(a.canonical_name, b.canonical_name); });
     var groups = Y.Object.values(state.groupsByName).sort(function(a, b) {
       return d3.ascending(a.canonical_name, b.canonical_name); });
+    var pnns = Y.Object.values(state.pnns).sort(function(a, b) {
+      return d3.ascending(a.name, b.name); });
+    var pnnsByRole = state.pnnsByRole;
+    var users = state.peopleByAcc;
     Y.each(roles, function(i) { rolesByCName[i.canonical_name] = i; });
     Y.each(groups, function(i) { groupsByCName[i.canonical_name] = i; });
     var isgadmin = state.isGlobalAdmin();
@@ -504,10 +534,13 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     var view = _views.attach("role", _self.doc);
     view.__role = obj && name;
     view.once(_selectPerson, state, view, "group-person", function(p) {
-      _addRoleMember(view.__role, null, view.valueOf("group"), p);
+      _addRoleMember(view.__role, null, view.valueOf("group"), p, null);
     });
     view.once(_selectPerson, state, view, "site-person", function(p) {
-      _addRoleMember(view.__role, view.valueOf("site"), null, p);
+      _addRoleMember(view.__role, view.valueOf("site"), null, p, null);
+    });
+    view.once(_selectPerson, state, view, "pnn-person", function(p) {
+      _addRoleMember(view.__role, null, null, p, view.valueOf("pnn"));
     });
 
     view.validator("r-description", X.rxvalidate(gui.rx.DESCRIPTION, true));
@@ -532,6 +565,14 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                    + "'>" + Y.Escape.html(s.canonical_name) + "</option>";
     });
     view.content("site", content);
+
+    content = "<option value=''>Select PNN</option>";
+    Y.each(pnns, function(s) {
+      if (isgadmin)
+        content += "<option value='" + X.encodeAsPath(s.name)
+                   + "'>" + Y.Escape.html(s.name) + "</option>";
+    });
+    view.content("pnn", content);
 
     _self.title(state, title, section + "s", "Admin");
     if (obj)
@@ -561,7 +602,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
                        + "><span class='rmicon'></span></span>"
                        + _self.personLink(instance, p)
                        + "</td></tr>";
-          });
+            });
         }
       });
       view.content("group-members", content);
@@ -588,12 +629,41 @@ var Admin = X.inherit(View, function(Y, gui, rank)
         }
       });
       view.content("site-members", content);
+
+      content = "";
+      if (title in pnnsByRole)
+       {
+       Y.each(pnnsByRole[title], function(s) {
+          var new_row=0;
+          Y.each(s, function(p) {
+           if (new_row == 0)
+           {
+             content += "<tr><td rowspan='" + s.length + "'>"
+                     + Y.Escape.html(p.pnn) + "</td>";
+           }
+           if (new_row == 1) content += "<tr>";
+           content += "<td>"
+                       + "<span class='rmbutton rmitem' title='Remove item'"
+                       + " x-role='" + X.encodeAsPath(obj.title) + "'"
+                       + " x-pnn='" + X.encodeAsPath(p.pnn) + "'"
+                       + " x-person='" + X.encodeAsPath(p.username) + "'"
+                       + " x-admin='" + (isgadmin ? "yes" : "no") + "'"
+                       + "><span class='rmicon'></span></span>"
+                       + _self.personLink(instance, users[p.username])
+                       + "</td></tr>";
+           new_row = 1;
+           });
+         new_row = 0;
+         });
+       }
+      view.content("pnn-members", content);
     }
     else
     {
       view.content("title", "Loading...");
       view.content("group-members", "");
       view.content("site-members", "");
+      view.content("pnn-members", "");
     }
 
     view.render();
@@ -646,7 +716,7 @@ var Admin = X.inherit(View, function(Y, gui, rank)
     var view = _views.attach("site", _self.doc);
     view.__site = obj && name;
     view.once(_selectPerson, state, view, "person", function(p) {
-      _addRoleMember(view.valueOf("role"), view.__site, null, p);
+      _addRoleMember(view.valueOf("role"), view.__site, null, p, null);
     });
 
     content = "<option value=''>Select role</option>";

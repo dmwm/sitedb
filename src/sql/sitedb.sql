@@ -310,6 +310,28 @@ create index ix_group_resp_user_group on group_responsibility (user_group);
 
 
 
+-- A mapping of humans to responsibilities associated with a PNN
+-- e.g. "Joe is the Global Admin of the T2_CH_CERN
+create table data_responsibility (
+  contact               number(10) not null,
+  role                  number(10) not null,
+  pnn                   number(10) not null,
+  --
+  constraint pk_data_resp primary key (contact, role, pnn),
+  constraint fk_data_resp_contact
+    foreign key (contact) references contact (id)
+    on delete cascade,
+  constraint fk_data_resp_role
+    foreign key (role) references role (id)
+    on delete cascade,
+  constraint fk_data_resp_pnn
+    foreign key (pnn) references phedex_node (id)
+    on delete cascade
+);
+create index ix_data_resp_role on data_responsibility (role);
+create index ix_data_resp_pnn on data_responsibility (pnn);
+
+
 ----
 --  Generic survey tables
 ----
