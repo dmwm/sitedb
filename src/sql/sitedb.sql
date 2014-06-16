@@ -131,7 +131,7 @@ create table psn_node (
   name                  varchar(100) not null,
   --
   constraint pk_psn_node primary key (id),
-  constraint uk_psn_node_name unique (name),
+  constraint uk_psn_node_name unique (name) using index (create index ix_psn_node_name on psn_node (name)),
   constraint fk_psn_node_site
     foreign key (site) references site (id)
   on delete cascade
@@ -139,7 +139,6 @@ create table psn_node (
 );
 create sequence psn_node_sq increment by 1 start with 1;
 create index ix_psn_node_site on psn_node (site);
-create index ix_psn_node_name on psn_node (name);
 
 ----
 --   Site performance tables
