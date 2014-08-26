@@ -33,14 +33,11 @@ class Processing(RESTEntity):
               *desc.columns*."""
 
     return self.api.query(None, None, """
-      select p.name phedex_name, psn.name psn_name, sam.name site_name
+      select p.name phedex_name, psn.name psn_name
         from psn_node_phedex_name_map pmap
         join phedex_node p on p.id = pmap.phedex_id
         join psn_node psn on psn.id = pmap.psn_id
         join site s on s.id = p.site
-        join site_cms_name_map cmap on cmap.site_id = s.id
-        join sam_cms_name_map smap on smap.cms_name_id = cmap.cms_name_id
-        join sam_name sam on sam.id = smap.sam_id
       """)
 
   @restcall
