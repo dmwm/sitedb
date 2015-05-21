@@ -132,7 +132,7 @@ class RebusFetch(RESTEntity):
                                    (pledgeid, site, pledgedate, cpu, job_slots, disk_store, tape_store, pledgequarter)
                             VALUES (resource_pledge_sq.nextval, :siteid, systimestamp, :cpu, 0, :disk, :tape, :year)
                          """, resource)
-      except Exception, e:
+      except Exception as e:
         cherrypy.log("WARNING: failed to update pledge %s, year %s: %s"
                      %(resource['siteid'], resource['year'], str(e)))
         continue
@@ -329,7 +329,7 @@ class RebusFetch(RESTEntity):
                                    (pledgeid, site, pledgedate, cpu, job_slots, disk_store, tape_store, pledgequarter)
                             VALUES (resource_pledge_sq.nextval, :site, systimestamp, 0, 0, 0, 0, :pledgequarter)
                          """, resource)
-      except Exception, e:
+      except Exception as e:
         cherrypy.log("WARNING: failed to update pledge %s, year %s: %s"
                      %(resource['site'], resource['pledgequarter'], str(e)))
         continue
@@ -397,7 +397,7 @@ class RebusFetch(RESTEntity):
                                     (id, federations_names_id, year, cpu, disk, tape, feddate)
                               values (federations_pledges_sq.nextval, :id, :year, :cpu, :disk, :tape, systimestamp)
                                """, pledge)
-      except Exception, e:
+      except Exception as e:
         # Ignore constraint errors for individual users instead of failing
         cherrypy.log("WARNING: failed to update pledge %s, year %s: %s"
                      %(pledge['id'], pledge['year'], str(e)))
@@ -416,7 +416,7 @@ class RebusFetch(RESTEntity):
                             (ID, NAME, COUNTRY)
                            VALUES (all_federations_names_sq.nextval, :name, :country)
                         """, name)
-      except Exception, e:
+      except Exception as e:
         cherrypy.log('Error : %s' %str(e))
         continue
     if names_new:
@@ -466,7 +466,7 @@ class RebusFetch(RESTEntity):
       values (sites_federations_names_map_sq.nextval, :site_id, :federations_names_id)
       """, new_ins_assoc)
 
-      except Exception, e:
+      except Exception as e:
         cherrypy.log('Error : %s' %str(e))
         continue
     if new_assoc:
@@ -534,7 +534,7 @@ class RebusFetchThread(Thread):
 
       try:
         self._sync(now)
-      except Exception, e:
+      except Exception as e:
         cherrypy.log("SYNC ERROR %s.%s REBUS sync failed %s"
                      % (getattr(e, "__module__", "__builtins__"),
                         e.__class__.__name__, str(e)))

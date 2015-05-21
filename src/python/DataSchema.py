@@ -265,7 +265,7 @@ class Schema(RESTEntity):
             while text.upper().find("IDENTIFIED BY @PASSWORD@") >= 0:
               text = text.replace("@PASSWORD@", "FAKE_" + mkpasswd() + "_FAKE", 1)
             rows.append(text)
-      except Exception, e:
+      except Exception as e:
 	# Ignore ORA-31608: specified object of type XYZZY not found
 	if not e.args or getattr(e.args[0], 'code', None) != 31608:
 	  raise

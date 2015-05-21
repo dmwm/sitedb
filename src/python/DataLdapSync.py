@@ -113,7 +113,7 @@ class LdapSync(RESTEntity):
                                   c.email = :email,
                                   c.dn = :dn
                          """, contact)
-      except Exception, e:
+      except Exception as e:
         # Ignore constraint errors for individual users instead of failing
         cherrypy.log("WARNING: failed to update user %s, DN %s: %s"
                      %(contact['username'], contact['dn'], str(e)))
@@ -235,7 +235,7 @@ class LdapSyncThread(Thread):
 
       try:
         self._sync(now)
-      except Exception, e:
+      except Exception as e:
         cherrypy.log("SYNC ERROR %s.%s LDAP sync failed %s"
                      % (getattr(e, "__module__", "__builtins__"),
                         e.__class__.__name__, str(e)))
