@@ -76,18 +76,17 @@ var SiteDB = function(Y, views, debug)
   };
 
   /** Report an error. Displays the error message in the overlay
-      area with a link to report the issue in trac if @a show, plus
+      area with a link to report the issue in GGUS if @a show, plus
       sends the message automatically to the server as problem
       feedback. Returns the full message. Both the server feedback
-      and trac ticket link are given unique id which can be used to
+      and GGUS ticket link are given unique id which can be used to
       identify this specific issue in logs. */
   this.errorReport = function(timeout, file, line, origin, category, message, show)
   {
     var errid = X.randomid();
     var emsg = X.encodeAsPath(message);
     var file = file.replace(/.*\//, "");
-    var label = X.encodeAsPath("[#" + category + ":" + errid
-                + "] SiteDB web problem");
+    var label = "[#" + category + ":" + errid + "]";
     var url = REST_SERVER_ROOT + "/feedback"
               + "?o=" + X.encodeAsPath(origin)
               + ";i=" + errid
@@ -95,11 +94,10 @@ var SiteDB = function(Y, views, debug)
               + ";l=" + X.encodeAsPath(file + ":" + line)
               + ";m=" + emsg;
 
-    var msg = message.replace(/[. ]*$/, "")
-              + ". (Automatically reported, in case of questions please"
-              + " follow up <a href='https://svnweb.cern.ch/trac/CMSDMWM/"
-              + "newticket?component=SiteDB&amp;summary=" + label + "&amp;"
-              + "description=" + emsg + "' target='_new'>on trac</a>.)";
+    var msg = "<b>"+ label + " " + message.replace(/[. ]*$/, "") + "</b>"
+              + ".<br />(Automatically reported, in case of questions please"
+              + " file a <a href='https://ggus.eu/?mode=ticket_cms'>"
+              + "GGUS ticket</a> to the CMS SiteDB Support Unit.)<br />";
 
     if (show)
       _gui.displayMessage(timeout, "alert", msg);
@@ -111,7 +109,7 @@ var SiteDB = function(Y, views, debug)
       shows an error message overlay. */
   this.pageErrorHandler = function(msg, url, line)
   {
-    _gui.errorReport(10000, url, line, "page", "exception",
+    _gui.errorReport(20000, url, line, "page", "exception",
                      "Internal error while rendering this page: "
                      + msg.toString().replace(/\s+/g, " "), true);
     _gui.view().error();

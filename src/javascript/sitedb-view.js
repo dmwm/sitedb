@@ -729,7 +729,7 @@ var View = function(Y, gui, rank, label, required)
   this.loading = function(state)
   {
     if (! state.complete)
-      gui.displayMessage(4000, "note", "Loading content...", true);
+      gui.displayMessage(4000, "note", "Loading content...<br />", true);
     else
       gui.hideMessage();
   };
