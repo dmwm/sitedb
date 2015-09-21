@@ -66,10 +66,10 @@ RX_USAGE     = re.compile(r"^(LCG|OSG|ARC|other)$")
 RX_YES_NO    = re.compile(r"^[yn]$")
 
 #: Regular expression for X509 DNs.
-RX_DN        = re.compile(r"(?iu)^(/[A-Z]+=([-\w _@'.()/]+))*$")
+RX_DN        = re.compile(r"(?iu)^(/[A-Z]+=([-\w _@:'.()/]+))*$")
 
 #: Regular expression for reasonable subset of LDAP DNs (RFC 4514).
-RX_LDAPDN    = re.compile(r"(?iu)^([A-Z]+=([-\w _@'.()/]+),?)*$")
+RX_LDAPDN    = re.compile(r"(?iu)^([A-Z]+=([-\w _@:'.()/]+),?)*$")
 #RX_ALTDN     = re.compile(r"(?iu)^X509:.*<S>(([A-Z]+=([-\w _@'.()/]+),?)*(?<!Kerberosservice))$")
 
 #: Regular expression for e-mail addresses.
