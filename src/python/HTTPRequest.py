@@ -119,10 +119,12 @@ class RequestManager:
         for c in ok:
           assert npending > 0
           self.cm.remove_handle(c)
-          self.request_respond(c)
-          c.buffer = None
-          self.free.append(c)
-          npending -= 1
+          try:
+            self.request_respond(c)
+          finally:
+            c.buffer = None
+            self.free.append(c)
+            npending -= 1
 
         for c, errno, errmsg in err:
           assert npending > 0
