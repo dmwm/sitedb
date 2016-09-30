@@ -299,10 +299,9 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         view.content("location", Y.Escape.html(s.country));
         view.content("usage", (s.usage ? Y.Escape.html(s.usage) : _none));
         view.content("links",
-                     (s.url ? "<a target='_new' href='" + s.url + "'>Site</a>" : "")
-                     + (s.url && s.logo_url ? ", " : "")
-                     + (s.logo_url ? "<a target='_new' href='" + s.logo_url + "'>Logo</a>" : "")
-                     + (! s.url && ! s.logo_url ? _none : ""));
+                     (s.url ? "<a target='_new' href='" + s.url + "'>Site</a>, " : "")
+                     + (s.logo_url ? "<a target='_new' href='" + s.logo_url + "'>Logo</a>, " : "")
+                     + (name ? "<a target='_new' href='https://gitlab.cern.ch/SITECONF/" + name + "'>SITECONF</a>" : ""));
 
         view.content("assocs-head",
                      _self.siteLink(instance, s, "Associations", "/associations"));
