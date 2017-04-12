@@ -367,7 +367,7 @@ class SiteNames(RESTEntity):
 ######################################################################
 ######################################################################
 class SiteResources(RESTEntity):
-  """REST entity for site SE resources.
+  """REST entity for site SE,gsiftp,xrootd resources.
 
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
@@ -408,7 +408,7 @@ class SiteResources(RESTEntity):
     return self.api.query(None, None, """
       select s.name site_name, r.type, r.fqdn, r.is_primary
       from site s
-      join resource_element r on r.site = s.id where r.type = 'SE'
+      join resource_element r on r.site = s.id
     """)
 
   @restcall

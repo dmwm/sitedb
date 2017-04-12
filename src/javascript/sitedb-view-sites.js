@@ -4,7 +4,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
   var _ALIASES = ["CMS", "PhEDEx", "LCG", "PSN"];
 
   /** Resource types. */
-  var _RESOURCES = ["SE"];
+  var _RESOURCES = ["SE","gsiftp","xrootd"];
 
   /** Myself. */
   var _self = this;
@@ -317,6 +317,12 @@ var Sites = X.inherit(View, function(Y, gui, rank)
                      _self.siteLink(instance, s, "Hosts", "/resources"));
         view.content("se",
                      s.resources.SE.map(function(i) {
+                       return Y.Escape.html(i.fqdn); }).join("<br />"));
+        view.content("gsiftp",
+                     s.resources.gsiftp.map(function(i) {
+                       return Y.Escape.html(i.fqdn); }).join("<br />"));
+        view.content("xrootd",
+                     s.resources.xrootd.map(function(i) {
                        return Y.Escape.html(i.fqdn); }).join("<br />"));
 
         var pledgeTime = null;

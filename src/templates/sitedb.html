@@ -78,7 +78,9 @@
        ><div class='group'
          ><h3 x-element='hosts-head'></h3
          ><table
-          ><tr><td><i>SEs</i></td><td x-element='se'></td></tr
+          ><tr><td><i>SEs(srm)</i></td><td x-element='se'></td></tr
+          ><tr><td><i>gsiftps</i></td><td x-element='gsiftp'></td></tr
+          ><tr><td><i>xrootds</i></td><td x-element='xrootd'></td></tr
          ></table
        ></div
        ><div class='group'
@@ -167,7 +169,9 @@
           ><th style='text-align:left'>Fully qualified host name</th></tr></thead
        ><tbody><tr><td><select x-element='resource'
           ><option value=''>Select type</option
-          ><option value='SE'>SE</option></select></td
+          ><option value='SE'>SE(srm)</option
+          ><option value='gsiftp'>gsiftp endpoint</option
+          ><option value='xrootd'>xrootd endpoint</option></select></td
           ><td><input x-element='primary' type='checkbox' /></td
           ><td><input x-element='name' type='text'
             placeholder='host.name.tld to add' /></td></tr></tbody
