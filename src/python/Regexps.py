@@ -88,7 +88,7 @@ RX_NAME_TYPE = re.compile(r"^(lcg|cms|phedex|psn)$")
 RX_RES_TYPE  = re.compile(r"^(SE|gsiftp|xrootd)$")
 
 #: Regular expression for fully qualified domain names.
-RX_FQDN      = re.compile(r"(?i)^(([-A-Z0-9]+\.)+[A-Z]{2,5}:\d+)?$")
+RX_FQDN      = re.compile(r"(?i)^(([-A-Z0-9]+\.)+[A-Z]{2,5}(:\d+)?)?$")
 
 #: Regular expression for URLs.
 RX_URL       = re.compile(r"(?i)^(https?://([-A-Z0-9]+\.)+[A-Z]{2,5}(:\d+)?(/[-A-Z0-9_.%/+]*)?)?$")
