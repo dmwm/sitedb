@@ -60,7 +60,7 @@ RX_NAME      = re.compile(r"(?iu)^([-\w '.]*)$")
 RX_COUNTRY   = re.compile(r"(?iu)^([-\w, ']*)$")
 
 #: Regular expression for site usage (= grid middleware).
-RX_USAGE     = re.compile(r"^(LCG|OSG|ARC|other)$")
+RX_USAGE     = re.compile(r"^(LCG|OSG|ARC|Local|Unregistered|other)$")
 
 #: Regular expression for yes/no setting.
 RX_YES_NO    = re.compile(r"^[yn]$")

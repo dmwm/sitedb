@@ -44,9 +44,27 @@ var Sites = X.inherit(View, function(Y, gui, rank)
                              url, logo_url, cms, lcg, executive)
   {
     if (! state || ! title || ! tier || ! country
-        || ! usage || ! cms || ! lcg || ! executive)
+        || ! usage || ! cms || ! executive)
       return;
+    if ( ! lcg )
+    {		  
+     state.modify([
+      { method: "PUT", entity: "sites",
+        data: { "site_name": title, "tier": tier, "country": country,
+                "usage": usage, "url": url, "logo_url": logo_url,
+                "devel_release": "n", "manual_install": "n",
+                "executive": executive.username },
+        message: "Creating site '" + Y.Escape.html(title) + "'" },
 
+      { method: "PUT", entity: "site-names",
+        data: { "site_name": title, "type": "cms", "alias": cms },
+        message: "Adding site alias " + Y.Escape.html(title) + " = "
+                 + Y.Escape.html(cms) + "/cms" },
+
+    ]);
+    }
+    else
+    {		  
     state.modify([
       { method: "PUT", entity: "sites",
         data: { "site_name": title, "tier": tier, "country": country,
@@ -65,6 +83,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         message: "Adding site alias " + Y.Escape.html(title) + " = "
                  + Y.Escape.html(cms) + "/lcg" }
     ]);
+   }	    
   };
 
   /** Action handler for adding site name aliases. */
