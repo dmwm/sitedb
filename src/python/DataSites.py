@@ -367,7 +367,7 @@ class SiteNames(RESTEntity):
 ######################################################################
 ######################################################################
 class SiteResources(RESTEntity):
-  """REST entity for site SE,gsiftp,xrootd resources.
+  """REST entity for site SE,gsiftp,xrootd,perfSONAR resources.
 
   ==================== ========================= ==================================== ====================
   Contents             Meaning                   Value                                Constraints
