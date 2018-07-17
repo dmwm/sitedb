@@ -4,7 +4,7 @@ var Sites = X.inherit(View, function(Y, gui, rank)
   var _ALIASES = ["CMS", "PhEDEx", "LCG", "PSN"];
 
   /** Resource types. */
-  var _RESOURCES = ["SE","gsiftp","xrootd"];
+  var _RESOURCES = ["SE","gsiftp","xrootd","perfSONAR"];
 
   /** Myself. */
   var _self = this;

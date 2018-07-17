@@ -85,7 +85,7 @@ RX_IM        = re.compile(r"(?i)^((aol|gtalk|msn|icq|jabber):[-A-Z0-9_.%+]+(@([-
 RX_NAME_TYPE = re.compile(r"^(lcg|cms|phedex|psn)$")
 
 #: Regular expression for possible resource types.
-RX_RES_TYPE  = re.compile(r"^(SE|gsiftp|xrootd)$")
+RX_RES_TYPE  = re.compile(r"^(SE|gsiftp|xrootd|perfSONAR)$")
 
 #: Regular expression for fully qualified domain names.
 RX_FQDN      = re.compile(r"(?i)^(([-A-Z0-9]+\.)+[A-Z]{2,5}(:\d+)?)?$")
