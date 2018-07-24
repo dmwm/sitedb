@@ -212,7 +212,7 @@ var State = function(Y, gui, instance)
     // Basic site records.
     Y.each(_data['sites'].value || [], function(i) {
       var site = { cc: null, canonical_name: i.site_name, name_alias: {},
-                   resources: { SE: [], gsiftp: [], xrootd: [] },
+                   resources: { SE: [], gsiftp: [], xrootd: [], perfSONAR: [] },
                    child_sites: [], parent_site: null,
                    resource_pledges: {}, pinned_software: {}, history_resource_pledges: {},
                    responsibilities: {}
@@ -289,7 +289,7 @@ var State = function(Y, gui, instance)
       pnnsByRole[i.role][i.pnn_name].push({'username': i.username, 'pnn': i.pnn_name});
     });
 
-    // Site resources (SE, gsiftp, xrootd).
+    // Site resources (SE, gsiftp, xrootd, perfSONAR).
     Y.each(_data['site-resources'].value || [], function(i) {
       if (i.site_name in byname)
       {

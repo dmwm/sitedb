@@ -343,6 +343,11 @@ var Sites = X.inherit(View, function(Y, gui, rank)
         view.content("xrootd",
                      s.resources.xrootd.map(function(i) {
                        return Y.Escape.html(i.fqdn); }).join("<br />"));
+        view.content("perfsonar",
+                     s.resources.perfSONAR.map(function(i) {
+                       return Y.Escape.html(i.fqdn); }).join("<br />"));
+
+
 
         var pledgeTime = null;
         var quarter = null;
