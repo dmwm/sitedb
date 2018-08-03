@@ -408,7 +408,7 @@ class SiteResources(RESTEntity):
     return self.api.query(None, None, """
       select s.name site_name, r.type, r.fqdn, r.is_primary
       from site s
-      join resource_element r on r.site = s.id where r.type IN ('SE', 'gsiftp', 'xrootd')
+      join resource_element r on r.site = s.id where r.type IN ('SE', 'gsiftp', 'xrootd','perfSONAR')
     """)
 
   @restcall
